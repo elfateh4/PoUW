@@ -7,6 +7,7 @@ and container deployment capabilities for the PoUW CI/CD pipeline.
 
 import asyncio
 import docker
+import docker.errors
 import logging
 import json
 import os
@@ -206,10 +207,13 @@ class DockerImageBuilder:
             
             for image in dangling_images:
                 try:
-                    self.client.images.remove(image.id, force=True)
-                    removed_dangling.append(image.id[:12])
+                    image_id = getattr(image, 'id', None)
+                    if image_id:
+                        self.client.images.remove(image_id, force=True)
+                        removed_dangling.append(image_id[:12])
                 except Exception as e:
-                    logger.warning(f"Failed to remove dangling image {image.id[:12]}: {e}")
+                    image_id = getattr(image, 'id', 'unknown')
+                    logger.warning(f"Failed to remove dangling image {image_id[:12] if image_id else 'unknown'}: {e}")
             
             # Remove old images (keep only latest N)
             image_groups = {}

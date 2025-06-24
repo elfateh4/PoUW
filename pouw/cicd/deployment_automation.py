@@ -24,6 +24,7 @@ import tempfile
 import shutil
 
 import docker
+import docker.errors
 from kubernetes import client, config as k8s_config
 import boto3
 from azure.identity import DefaultAzureCredential
@@ -583,7 +584,7 @@ class DeploymentPipelineManager:
             environment=config.env_vars,
             ports={"8000/tcp": None},  # Random port
             detach=True,
-            restart_policy={"Name": "unless-stopped"}
+            restart_policy={"Name": "unless-stopped"}  # type: ignore
         )
         
         # Wait for container to be ready

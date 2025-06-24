@@ -45,10 +45,11 @@ class StepConfiguration:
     if_condition: Optional[str] = None
     timeout_minutes: Optional[int] = None
     continue_on_error: bool = False
+    id: Optional[str] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for YAML generation"""
-        step_dict = {"name": self.name}
+        step_dict: Dict[str, Any] = {"name": self.name}
         
         if self.uses:
             step_dict["uses"] = self.uses
@@ -64,6 +65,8 @@ class StepConfiguration:
             step_dict["timeout-minutes"] = self.timeout_minutes
         if self.continue_on_error:
             step_dict["continue-on-error"] = self.continue_on_error
+        if self.id:
+            step_dict["id"] = self.id
             
         return step_dict
 

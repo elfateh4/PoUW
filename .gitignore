@@ -178,7 +178,6 @@ env*/
 *.swo
 
 # Data files (should not be committed)
-data/
 datasets/
 *.csv
 *.json.bak
