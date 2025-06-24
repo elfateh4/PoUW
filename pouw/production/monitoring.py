@@ -80,9 +80,9 @@ class PerformanceProfiler:
         end_memory = psutil.virtual_memory().used / 1024 / 1024
         end_cpu = psutil.cpu_percent()
         
-        execution_time = end_time - self.start_time
-        memory_delta = end_memory - self.start_memory
-        cpu_usage = (self.start_cpu + end_cpu) / 2  # Average CPU usage
+        execution_time = end_time - (self.start_time or 0)
+        memory_delta = end_memory - (self.start_memory or 0)
+        cpu_usage = ((self.start_cpu or 0) + end_cpu) / 2  # Average CPU usage
         
         # GPU metrics
         gpu_memory_delta = None
@@ -109,7 +109,7 @@ class PerformanceMonitor:
     Comprehensive performance monitoring system for PoUW
     """
     
-    def __init__(self, history_size: int = 1000, enable_gpu: bool = None):
+    def __init__(self, history_size: int = 1000, enable_gpu: Optional[bool] = None):
         self.history_size = history_size
         self.enable_gpu = enable_gpu if enable_gpu is not None else torch.cuda.is_available()
         
@@ -120,7 +120,7 @@ class PerformanceMonitor:
         
         # Monitoring state
         self.monitoring_active = False
-        self.monitoring_thread = None
+        self.monitoring_thread: Optional[threading.Thread] = None
         self.monitoring_interval = 5.0  # seconds
         
         # Optimization recommendations
@@ -202,10 +202,10 @@ class PerformanceMonitor:
         # Network I/O
         network = psutil.net_io_counters()
         network_io = {
-            'bytes_sent': network.bytes_sent,
-            'bytes_recv': network.bytes_recv,
-            'packets_sent': network.packets_sent,
-            'packets_recv': network.packets_recv
+            'bytes_sent': float(network.bytes_sent),
+            'bytes_recv': float(network.bytes_recv),
+            'packets_sent': float(network.packets_sent),
+            'packets_recv': float(network.packets_recv)
         }
         
         # GPU info
@@ -220,13 +220,15 @@ class PerformanceMonitor:
             
             # Try to get GPU utilization (requires nvidia-ml-py)
             try:
-                import pynvml
+                import pynvml  # type: ignore
                 pynvml.nvmlInit()
                 handle = pynvml.nvmlDeviceGetHandleByIndex(0)
                 gpu_util = pynvml.nvmlDeviceGetUtilizationRates(handle)
                 gpu_info['utilization'] = gpu_util.gpu
                 gpu_info['memory_utilization'] = gpu_util.memory
-            except:
+            except ImportError:
+                pass  # pynvml not available
+            except Exception:
                 pass  # GPU utilization not available
         
         return SystemHealth(

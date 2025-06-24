@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class ModelArchitectureConfig:
     """Configuration for a model architecture"""
     name: str
-    model_class: type
+    model_class: Callable[[], nn.Module]
     model_kwargs: Dict[str, Any]
     optimizer_class: type = optim.Adam
     optimizer_kwargs: Dict[str, Any] = field(default_factory=lambda: {'lr': 0.001})
@@ -349,10 +349,10 @@ class CrossValidationManager:
                 labels.append(label)
             
             kfold = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
-            fold_splits = list(kfold.split(indices, labels))
+            fold_splits = list(kfold.split(np.arange(dataset_size), labels))
         else:
             kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
-            fold_splits = list(kfold.split(indices))
+            fold_splits = list(kfold.split(np.arange(dataset_size)))
         
         # Run cross-validation for each model
         all_results = {}
@@ -367,8 +367,8 @@ class CrossValidationManager:
                 logger.info(f"  Fold {fold_idx + 1}/{k_folds}")
                 
                 # Create data loaders
-                train_sampler = SubsetRandomSampler(train_indices)
-                val_sampler = SubsetRandomSampler(val_indices)
+                train_sampler = SubsetRandomSampler(train_indices.tolist())
+                val_sampler = SubsetRandomSampler(val_indices.tolist())
                 
                 train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler)
                 val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler)
@@ -403,13 +403,13 @@ class CrossValidationManager:
             
             for metric in metric_names:
                 values = [result[metric] for result in fold_results]
-                mean_metrics[metric] = np.mean(values)
-                std_metrics[metric] = np.std(values)
+                mean_metrics[metric] = float(np.mean(values))
+                std_metrics[metric] = float(np.std(values))
             
             # Find best and worst folds
             accuracies = [result['accuracy'] for result in fold_results]
-            best_fold = np.argmax(accuracies)
-            worst_fold = np.argmin(accuracies)
+            best_fold = int(np.argmax(accuracies))
+            worst_fold = int(np.argmin(accuracies))
             
             # Get model parameter count
             model = config.model_class()
@@ -464,8 +464,8 @@ class CrossValidationManager:
         
         # Evaluation
         model.eval()
-        all_predictions = []
-        all_targets = []
+        all_predictions: List[int] = []
+        all_targets: List[int] = []
         total_val_loss = 0
         num_val_batches = 0
         
@@ -496,11 +496,11 @@ class CrossValidationManager:
         avg_val_loss = total_val_loss / num_val_batches if num_val_batches > 0 else 0
         
         return {
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-            'f1': f1,
-            'val_loss': avg_val_loss
+            'accuracy': float(accuracy),
+            'precision': float(precision),
+            'recall': float(recall),
+            'f1': float(f1),
+            'val_loss': float(avg_val_loss)
         }
     
     def get_best_model(self, metric: str = 'accuracy') -> Tuple[str, ValidationResults]:
@@ -519,6 +519,9 @@ class CrossValidationManager:
                 best_score = score
                 best_model = model_name
                 best_results = results
+        
+        if best_model is None or best_results is None:
+            raise ValueError(f"No valid results found for metric: {metric}")
         
         return best_model, best_results
     

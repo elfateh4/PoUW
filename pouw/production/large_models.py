@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.checkpoint import checkpoint
 from typing import Dict, List, Optional, Any, Tuple, Union
 import math
 import logging
@@ -89,10 +90,12 @@ class LargeModelArchitectures:
             
             def forward(self, x):
                 if self.gradient_checkpointing and self.training:
-                    x = torch.utils.checkpoint.checkpoint(self.features, x)
+                    x = checkpoint(self.features, x)
                 else:
                     x = self.features(x)
                 
+                # Ensure x is a tensor before flattening
+                assert isinstance(x, torch.Tensor), f"Expected tensor, got {type(x)}"
                 x = torch.flatten(x, 1)
                 x = self.classifier(x)
                 return x
@@ -155,7 +158,7 @@ class LargeModelArchitectures:
                 
                 # Transformer layers
                 if self.gradient_checkpointing and self.training:
-                    x = torch.utils.checkpoint.checkpoint(self.transformer, x, attention_mask)
+                    x = checkpoint(self.transformer, x, attention_mask)
                 else:
                     x = self.transformer(x, src_key_padding_mask=attention_mask)
                 
@@ -260,10 +263,10 @@ class LargeModelArchitectures:
                 x = self.maxpool(x)
                 
                 if self.gradient_checkpointing and self.training:
-                    x = torch.utils.checkpoint.checkpoint(self.layer1, x)
-                    x = torch.utils.checkpoint.checkpoint(self.layer2, x)
-                    x = torch.utils.checkpoint.checkpoint(self.layer3, x)
-                    x = torch.utils.checkpoint.checkpoint(self.layer4, x)
+                    x = checkpoint(self.layer1, x)
+                    x = checkpoint(self.layer2, x)
+                    x = checkpoint(self.layer3, x)
+                    x = checkpoint(self.layer4, x)
                 else:
                     x = self.layer1(x)
                     x = self.layer2(x)
@@ -271,6 +274,8 @@ class LargeModelArchitectures:
                     x = self.layer4(x)
                 
                 x = self.avgpool(x)
+                # Ensure x is a tensor before flattening
+                assert isinstance(x, torch.Tensor), f"Expected tensor, got {type(x)}"
                 x = torch.flatten(x, 1)
                 x = self.fc(x)
                 
@@ -394,7 +399,7 @@ class LargeModelManager:
         else:
             return 4
     
-    def optimize_large_model(self, model: nn.Module, model_name: str = None) -> nn.Module:
+    def optimize_large_model(self, model: nn.Module, model_name: Optional[str] = None) -> nn.Module:
         """Apply optimizations for large models"""
         
         # Get model config if available
@@ -404,8 +409,8 @@ class LargeModelManager:
         model = self.gpu_manager.optimize_model_for_gpu(model)
         
         # Enable gradient checkpointing for memory efficiency
-        if hasattr(model, 'enable_gradient_checkpointing'):
-            model.enable_gradient_checkpointing()
+        if hasattr(model, 'enable_gradient_checkpointing') and callable(getattr(model, 'enable_gradient_checkpointing')):
+            model.enable_gradient_checkpointing()  # type: ignore
             logger.info("Gradient checkpointing enabled")
         
         # Distributed training setup
@@ -416,15 +421,16 @@ class LargeModelManager:
         # Model compilation for optimization (PyTorch 2.0+)
         if hasattr(torch, 'compile'):
             try:
-                model = torch.compile(model, mode='max-autotune')
+                compiled_model = torch.compile(model, mode='max-autotune')  # type: ignore
+                model = compiled_model  # type: ignore
                 logger.info("Model compiled for optimization")
             except Exception as e:
                 logger.warning(f"Model compilation failed: {e}")
         
         return model
     
-    def create_efficient_dataloader(self, dataset, batch_size: int = None, 
-                                  num_workers: int = None) -> DataLoader:
+    def create_efficient_dataloader(self, dataset, batch_size: Optional[int] = None, 
+                                  num_workers: Optional[int] = None) -> DataLoader:
         """Create memory-efficient dataloader for large models"""
         
         if batch_size is None:
@@ -546,13 +552,13 @@ def count_parameters(model: nn.Module) -> Tuple[int, int]:
 
 def enable_gradient_checkpointing(model: nn.Module):
     """Enable gradient checkpointing for memory efficiency"""
-    if hasattr(model, 'enable_gradient_checkpointing'):
-        model.enable_gradient_checkpointing()
+    if hasattr(model, 'enable_gradient_checkpointing') and callable(getattr(model, 'enable_gradient_checkpointing')):
+        model.enable_gradient_checkpointing()  # type: ignore
         logger.info("Gradient checkpointing enabled")
     else:
         logger.warning("Model does not support gradient checkpointing")
 
-def estimate_training_memory(model: nn.Module, batch_size: int, sequence_length: int = None) -> float:
+def estimate_training_memory(model: nn.Module, batch_size: int, sequence_length: Optional[int] = None) -> float:
     """Estimate memory requirement for training"""
     
     # Count parameters

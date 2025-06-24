@@ -79,7 +79,11 @@ class GPUManager:
             
             logger.info(f"GPU: {gpu_props.name}")
             logger.info(f"GPU Memory: {memory_gb:.1f} GB")
-            logger.info(f"CUDA Version: {torch.version.cuda}")
+            try:
+                cuda_version = torch.version.cuda  # type: ignore
+                logger.info(f"CUDA Version: {cuda_version}")
+            except AttributeError:
+                logger.info("CUDA Version: Unknown")
             logger.info(f"GPU Count: {torch.cuda.device_count()}")
             
             if self.scaler:
@@ -103,13 +107,17 @@ class GPUManager:
         
         if self.device.type == 'cuda':
             props = torch.cuda.get_device_properties(self.device)
+            try:
+                cuda_version = torch.version.cuda  # type: ignore
+            except AttributeError:
+                cuda_version = 'Unknown'
             info.update({
                 'gpu_name': props.name,
                 'total_memory_gb': props.total_memory / 1024**3,
                 'allocated_memory_gb': torch.cuda.memory_allocated(self.device) / 1024**3,
                 'reserved_memory_gb': torch.cuda.memory_reserved(self.device) / 1024**3,
                 'device_count': torch.cuda.device_count(),
-                'cuda_version': torch.version.cuda,
+                'cuda_version': cuda_version,
                 'compute_capability': f"{props.major}.{props.minor}"
             })
         
@@ -184,7 +192,12 @@ class GPUManager:
                 'max_reserved_gb': torch.cuda.max_memory_reserved(self.device) / 1024**3
             }
         else:
-            return {'status': 'CPU mode - no GPU memory tracking'}
+            return {
+                'allocated_gb': 0.0,
+                'reserved_gb': 0.0,
+                'max_allocated_gb': 0.0,
+                'max_reserved_gb': 0.0
+            }
 
 
 class GPUAcceleratedTrainer:
@@ -206,7 +219,7 @@ class GPUAcceleratedTrainer:
             # Compile model for newer PyTorch versions
             if hasattr(torch, 'compile') and hasattr(model, 'forward'):
                 try:
-                    model = torch.compile(model)
+                    model = torch.compile(model)  # type: ignore
                     logger.info("Model compiled for GPU optimization")
                 except Exception as e:
                     logger.warning(f"Model compilation failed: {e}")
@@ -225,7 +238,7 @@ class GPUAcceleratedTrainer:
             return data
     
     def train_batch(self, model: nn.Module, batch_data: Tuple[torch.Tensor, torch.Tensor], 
-                   optimizer: optim.Optimizer, criterion: nn.Module) -> Dict[str, float]:
+                   optimizer: optim.Optimizer, criterion: nn.Module) -> Dict[str, Any]:
         """Train single batch with GPU acceleration"""
         
         inputs, targets = batch_data
@@ -355,7 +368,7 @@ class GPUAcceleratedMiner:
             hash_values = torch.sum(combined_data) % (2**target_difficulty)
             
             if hash_values.item() < target_difficulty:
-                return nonce_candidates[0].item()
+                return int(nonce_candidates[0].item())
         
         return None
 
@@ -367,18 +380,22 @@ class GPUMemoryManager:
     
     def __init__(self, gpu_manager: GPUManager):
         self.gpu_manager = gpu_manager
-        self.memory_checkpoints: List[Dict[str, float]] = []
+        self.memory_checkpoints: List[Dict[str, Any]] = []
     
     def create_checkpoint(self, name: str):
         """Create memory usage checkpoint"""
         if self.gpu_manager.is_gpu_available:
-            usage = self.gpu_manager.get_memory_usage()
-            usage['checkpoint_name'] = name
-            usage['timestamp'] = torch.cuda.Event(enable_timing=True)
-            self.memory_checkpoints.append(usage)
+            usage = self.gpu_manager.get_memory_usage().copy()
+            # Store additional metadata separately to avoid type conflicts
+            checkpoint_data = {
+                **usage,
+                'checkpoint_name': name,
+                'timestamp': torch.cuda.Event(enable_timing=True) if self.gpu_manager.is_gpu_available else None
+            }
+            self.memory_checkpoints.append(checkpoint_data)
             logger.debug(f"Memory checkpoint '{name}': {usage['allocated_gb']:.2f} GB allocated")
     
-    def optimize_memory_usage(self, target_memory_gb: float = None):
+    def optimize_memory_usage(self, target_memory_gb: Optional[float] = None):
         """Optimize GPU memory usage"""
         if not self.gpu_manager.is_gpu_available:
             return
@@ -443,7 +460,7 @@ def enable_gpu_optimizations():
 
 def benchmark_gpu_performance(gpu_manager: GPUManager, 
                             model: nn.Module, 
-                            sample_input: torch.Tensor) -> Dict[str, float]:
+                            sample_input: torch.Tensor) -> Dict[str, Any]:
     """Benchmark GPU performance for a model"""
     
     model = gpu_manager.optimize_model_for_gpu(model)
@@ -464,14 +481,14 @@ def benchmark_gpu_performance(gpu_manager: GPUManager,
     cpu_start = time.time()
     
     if start_time:
-        start_time.record()
+        start_time.record()  # type: ignore
     
     with torch.no_grad():
         for _ in range(100):
             _ = model(sample_input)
     
-    if end_time:
-        end_time.record()
+    if end_time and start_time:
+        end_time.record()  # type: ignore
         torch.cuda.synchronize()
         gpu_time = start_time.elapsed_time(end_time) / 1000  # Convert to seconds
     else:

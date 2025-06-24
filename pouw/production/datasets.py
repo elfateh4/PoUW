@@ -174,16 +174,23 @@ class ProductionDatasetManager:
             y = np.array([label_to_idx[label] for label in y])
             num_classes = len(unique_labels)
         else:
-            num_classes = len(np.unique(y))
+            num_classes = len(np.unique(np.array(y)))
         
         # Calculate hash
         data_hash = hashlib.sha256(str(df.head()).encode()).hexdigest()[:16]
+        
+        # Safely get input shape
+        shape_list = list(X.shape)
+        if len(shape_list) >= 2:
+            input_shape = tuple(int(shape_list[i]) for i in range(1, len(shape_list)))
+        else:
+            input_shape = (int(shape_list[0]),)
         
         metadata = DatasetMetadata(
             name=dataset_name,
             size=len(df),
             num_classes=num_classes,
-            input_shape=(X.shape[1],),
+            input_shape=input_shape,
             data_format='tabular',
             hash_value=data_hash,
             preprocessing={'standardized': False},
@@ -220,8 +227,19 @@ class ProductionDatasetManager:
         """Load data from HDF5 file"""
         
         with h5py.File(filepath, 'r') as f:
-            X = f[data_key][:]
-            y = f[labels_key][:]
+            # Get datasets with proper type checking
+            if data_key not in f or labels_key not in f:
+                raise ValueError(f"Keys '{data_key}' or '{labels_key}' not found in HDF5 file")
+            
+            data_dataset = f[data_key]
+            labels_dataset = f[labels_key]
+            
+            # Verify these are actually datasets
+            if not isinstance(data_dataset, h5py.Dataset) or not isinstance(labels_dataset, h5py.Dataset):
+                raise ValueError("HDF5 objects are not datasets")
+            
+            X = np.array(data_dataset[:])
+            y = np.array(labels_dataset[:])
         
         # Convert to appropriate types
         X = X.astype(np.float32)
@@ -235,13 +253,17 @@ class ProductionDatasetManager:
         # Calculate hash
         data_hash = hashlib.sha256(str(X[:100]).encode()).hexdigest()[:16]
         
-        # Determine input shape
-        if len(X.shape) > 2:
-            input_shape = X.shape[1:]
-            data_format = 'images' if len(X.shape) == 4 else 'multidimensional'
-        else:
-            input_shape = (X.shape[1],)
+        # Determine input shape safely
+        shape_list = list(X.shape)
+        if len(shape_list) > 2:
+            input_shape = tuple(int(dim) for dim in shape_list[1:])
+            data_format = 'images' if len(shape_list) == 4 else 'multidimensional'
+        elif len(shape_list) == 2:
+            input_shape = (int(shape_list[1]),)
             data_format = 'tabular'
+        else:
+            input_shape = (int(shape_list[0]),)
+            data_format = 'vector'
         
         metadata = DatasetMetadata(
             name=dataset_name,
