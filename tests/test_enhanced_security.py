@@ -10,7 +10,7 @@ import time
 import numpy as np
 from unittest.mock import Mock, patch
 
-from pouw.security.enhanced import (
+from pouw.security import (
     AdvancedAnomalyDetector,
     AdvancedAuthentication,
     IntrusionDetectionSystem,

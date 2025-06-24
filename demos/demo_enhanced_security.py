@@ -19,15 +19,15 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-from pouw.security.enhanced import (
+from pouw.security import (
     SecurityMonitor,
     AdvancedAnomalyDetector,
     AdvancedAuthentication,
     IntrusionDetectionSystem,
     SecurityLevel,
     AnomalyType,
+    AttackType
 )
-from pouw.security import AttackType
 from pouw.ml.training import GradientUpdate
 
 
