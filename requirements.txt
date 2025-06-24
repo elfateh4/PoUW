@@ -17,3 +17,34 @@ pydantic
 click
 structlog
 colorama
+# Enterprise deployment dependencies
+pyyaml
+kubernetes
+kubernetes-asyncio
+docker
+aiofiles
+jinja2
+aiohttp
+psutil
+
+# CI/CD dependencies
+bandit
+safety
+pylint
+mypy
+black
+isort
+flake8
+coverage
+pytest-cov
+radon
+boto3
+azure-identity
+azure-mgmt-containerinstance
+
+# Additional CI/CD automation dependencies  
+locust
+requests
+gitpython
+python-jenkins
+kubernetes-client

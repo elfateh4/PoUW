@@ -173,7 +173,41 @@ class MLTask:
     client_id: str
     created_at: int = field(default_factory=lambda: int(time.time()))
     
+    @property
+    def complexity_score(self) -> float:
+        """Calculate task complexity score based on task parameters"""
+        score = 0.5  # Base complexity
+        
+        # Architecture complexity
+        arch = self.architecture
+        if 'hidden_sizes' in arch:
+            # More layers = higher complexity
+            num_layers = len(arch['hidden_sizes'])
+            score += min(0.3, num_layers * 0.05)
+        
+        if 'input_size' in arch and 'output_size' in arch:
+            # Larger networks = higher complexity
+            size_factor = (arch['input_size'] + arch['output_size']) / 1000
+            score += min(0.2, size_factor * 0.1)
+        
+        # Dataset size complexity
+        if 'size' in self.dataset_info:
+            size_factor = self.dataset_info['size'] / 100000  # Normalize to 100k samples
+            score += min(0.2, size_factor * 0.1)
+        
+        # Performance requirements complexity
+        if 'min_accuracy' in self.performance_requirements:
+            # Higher accuracy requirements = higher complexity
+            acc_requirement = self.performance_requirements['min_accuracy']
+            if acc_requirement > 0.9:
+                score += 0.2
+            elif acc_requirement > 0.8:
+                score += 0.1
+        
+        return min(1.0, score)  # Cap at 1.0
+    
     def to_dict(self) -> Dict[str, Any]:
+        """Convert MLTask to dictionary representation"""
         return {
             'task_id': self.task_id,
             'model_type': self.model_type,
@@ -186,7 +220,8 @@ class MLTask:
             'performance_requirements': self.performance_requirements,
             'fee': self.fee,
             'client_id': self.client_id,
-            'created_at': self.created_at
+            'created_at': self.created_at,
+            'complexity_score': self.complexity_score
         }
 
 

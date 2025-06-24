@@ -1,0 +1,248 @@
+version: '3.8'
+
+services:
+  # PoUW Blockchain Node
+  pouw-blockchain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pouw/blockchain:latest
+    container_name: pouw-blockchain
+    ports:
+      - "8545:8545"  # RPC
+      - "8546:8546"  # WebSocket
+      - "30303:30303" # P2P
+    environment:
+      - POUW_ROLE=miner
+      - POUW_NETWORK_ID=1337
+      - POUW_LOG_LEVEL=info
+      - POUW_DATA_DIR=/data
+    volumes:
+      - blockchain_data:/data
+      - ./logs:/logs
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PoUW ML Trainer
+  pouw-ml-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pouw/ml-trainer:latest
+    container_name: pouw-ml-trainer
+    ports:
+      - "8080:8080"
+    environment:
+      - POUW_ROLE=ml-trainer
+      - POUW_GPU_ENABLED=false
+      - POUW_TRAINING_MODE=distributed
+      - POUW_MODELS_DIR=/models
+    volumes:
+      - ml_models:/models
+      - ./logs:/logs
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    depends_on:
+      - pouw-blockchain
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  # PoUW VPN Mesh
+  pouw-vpn-mesh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pouw/vpn-mesh:latest
+    container_name: pouw-vpn-mesh
+    ports:
+      - "1194:1194/udp"  # OpenVPN
+      - "8081:8081"      # Management API
+    environment:
+      - POUW_ROLE=vpn-mesh
+      - POUW_VPN_MODE=mesh
+      - POUW_ENCRYPTION=aes-256-cbc
+    volumes:
+      - vpn_config:/etc/openvpn
+      - ./logs:/logs
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: pouw-postgres
+    environment:
+      - POSTGRES_DB=pouw
+      - POSTGRES_USER=pouw
+      - POSTGRES_PASSWORD=pouw_secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pouw"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: pouw-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pouw-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - pouw-network
+    restart: unless-stopped
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pouw-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # NGINX Load Balancer
+  nginx-lb:
+    image: nginx:alpine
+    container_name: pouw-nginx-lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    depends_on:
+      - pouw-blockchain
+      - pouw-ml-trainer
+
+  # Log Aggregator (ELK Stack - Elasticsearch)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: pouw-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - pouw-network
+    restart: unless-stopped
+
+  # Kibana Dashboard
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: pouw-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+
+  # Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: pouw-logstash
+    volumes:
+      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logs:/logs:ro
+    networks:
+      - pouw-network
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+
+networks:
+  pouw-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  blockchain_data:
+    driver: local
+  ml_models:
+    driver: local
+  vpn_config:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local

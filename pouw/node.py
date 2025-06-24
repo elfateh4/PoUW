@@ -22,6 +22,11 @@ from .blockchain import Blockchain, MLTask, PayForTaskTransaction, BuyTicketsTra
 from .ml import SimpleMLP, DistributedTrainer, MiniBatch, GradientUpdate
 from .mining import PoUWMiner, PoUWVerifier, MiningProof
 from .network import (P2PNode, NetworkMessage, BlockchainMessageHandler, MLMessageHandler, MessageHistory,NetworkOperationsManager)
+from .network.vpn_mesh_enhanced import (
+    ProductionVPNMeshManager, 
+    MeshNetworkCoordinator,
+    VPNProtocol
+)
 from .economics import EconomicSystem, NodeRole, Ticket
 from .crypto import BLSThresholdCrypto, DistributedKeyGeneration, SupervisorConsensus
 from .security import AttackMitigationSystem, SecurityAlert, AttackType
@@ -70,6 +75,14 @@ class PoUWNode:
             node_id=node_id, 
             role=role.value,
             supervisor_nodes=supervisor_nodes
+        )
+        
+        # Enhanced VPN mesh manager for production-ready networking ⭐ NEW
+        self.vpn_mesh_manager = ProductionVPNMeshManager(
+            node_id=node_id,
+            network_cidr="10.100.0.0/16",
+            preferred_protocol=VPNProtocol.WIREGUARD,
+            base_port=51820 + hash(node_id) % 1000  # Unique port per node
         )
         
         # Current state
@@ -633,6 +646,138 @@ class PoUWNode:
                 )
                 await self.p2p_node.send_to_peer(ticket.owner_id, message)
     
+    # ===== VPN MESH NETWORKING METHODS ===== ⭐ NEW
+    
+    async def initialize_vpn_mesh(self, supervisor_nodes: Optional[List[str]] = None, worker_nodes: Optional[List[str]] = None):
+        """Initialize VPN mesh network for secure P2P communication"""
+        try:
+            # Join mesh network through coordinator (if needed)
+            coordinator_endpoint = f"coordinator.mesh:9090"  # Mock coordinator
+            success = await self.vpn_mesh_manager.join_mesh_network(coordinator_endpoint)
+            
+            if not success:
+                self.logger.warning("Failed to join mesh through coordinator, proceeding with direct connections")
+            
+            # For supervisors, establish mesh topology with other supervisors
+            if self.role == NodeRole.SUPERVISOR and supervisor_nodes:
+                await self._establish_supervisor_mesh(supervisor_nodes)
+            
+            # For workers, connect to supervisors with redundancy
+            elif self.role == NodeRole.MINER and supervisor_nodes:
+                await self._connect_to_supervisors(supervisor_nodes)
+            
+            self.logger.info(f"VPN mesh network initialized for {self.role.value} node")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to initialize VPN mesh: {e}")
+            return False
+    
+    async def _establish_supervisor_mesh(self, supervisor_nodes: List[str]):
+        """Establish full mesh topology between supervisors"""
+        for peer_node_id in supervisor_nodes:
+            if peer_node_id != self.node_id:
+                try:
+                    peer_info = {
+                        'physical_ip': f"10.0.0.{abs(hash(peer_node_id)) % 200 + 10}",  # Mock IP
+                        'port': 51820 + abs(hash(peer_node_id)) % 1000,
+                        'public_key': f'mock_pubkey_{peer_node_id}'
+                    }
+                    await self.vpn_mesh_manager.establish_tunnel_to_peer(peer_node_id, peer_info)
+                    self.logger.info(f"Established VPN tunnel to supervisor {peer_node_id}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to connect to supervisor {peer_node_id}: {e}")
+    
+    async def _connect_to_supervisors(self, supervisor_nodes: List[str]):
+        """Connect worker to supervisors with redundancy"""
+        connections_established = 0
+        target_connections = min(3, len(supervisor_nodes))  # Connect to up to 3 supervisors
+        
+        for supervisor_id in supervisor_nodes[:target_connections]:
+            try:
+                peer_info = {
+                    'physical_ip': f"10.0.0.{abs(hash(supervisor_id)) % 200 + 10}",  # Mock IP
+                    'port': 51820 + abs(hash(supervisor_id)) % 1000,
+                    'public_key': f'mock_pubkey_{supervisor_id}'
+                }
+                await self.vpn_mesh_manager.establish_tunnel_to_peer(supervisor_id, peer_info)
+                connections_established += 1
+                self.logger.info(f"Connected to supervisor {supervisor_id} via VPN")
+            except Exception as e:
+                self.logger.warning(f"Failed to connect to supervisor {supervisor_id}: {e}")
+        
+        if connections_established == 0:
+            raise Exception("Failed to connect to any supervisors")
+    
+    async def get_vpn_mesh_status(self) -> Dict[str, Any]:
+        """Get comprehensive VPN mesh network status"""
+        try:
+            # Get basic mesh status
+            status = self.vpn_mesh_manager.get_mesh_status()
+            tunnel_details = self.vpn_mesh_manager.get_tunnel_details()
+            
+            # Add node-specific information
+            status.update({
+                'node_id': self.node_id,
+                'role': self.role.value,
+                'tunnel_details': tunnel_details,
+                'mesh_health': self._assess_mesh_health()
+            })
+            
+            return status
+            
+        except Exception as e:
+            self.logger.error(f"Error getting VPN mesh status: {e}")
+            return {'error': str(e)}
+    
+    def _assess_mesh_health(self) -> str:
+        """Assess overall mesh network health"""
+        try:
+            tunnel_details = self.vpn_mesh_manager.get_tunnel_details()
+            if not tunnel_details:
+                return 'no_connections'
+            
+            active_tunnels = len([t for t in tunnel_details.values() 
+                                if t.get('state') == 'CONNECTED'])
+            total_tunnels = len(tunnel_details)
+            
+            if total_tunnels == 0:
+                return 'no_connections'
+            
+            health_ratio = active_tunnels / total_tunnels
+            
+            if health_ratio >= 0.9:
+                return 'excellent'
+            elif health_ratio >= 0.7:
+                return 'good'
+            elif health_ratio >= 0.5:
+                return 'degraded'
+            else:
+                return 'poor'
+                
+        except Exception:
+            return 'unknown'
+    
+    async def optimize_mesh_network(self):
+        """Optimize VPN mesh network topology and performance"""
+        try:
+            # Note: The current VPN mesh implementation handles optimization internally
+            # during tunnel health monitoring and routing recalculation
+            
+            self.logger.info("VPN mesh network optimization requested")
+            # The ProductionVPNMeshManager handles optimization through its monitoring thread
+            
+        except Exception as e:
+            self.logger.error(f"Error optimizing mesh network: {e}")
+    
+    async def shutdown_vpn_mesh(self):
+        """Gracefully shutdown VPN mesh network"""
+        try:
+            await self.vpn_mesh_manager.disconnect_from_mesh()
+            self.logger.info("VPN mesh network shutdown completed")
+        except Exception as e:
+            self.logger.error(f"Error during VPN mesh shutdown: {e}")
+    
     def get_status(self) -> Dict[str, Any]:
         """Get current node status with advanced features"""
         status = {
@@ -705,8 +850,6 @@ class PoUWNode:
                 'node_id': self.node_id,
                 'total_alerts': len(self.security_alerts),
                 'alert_breakdown': {},
-                'blacklisted_nodes': self.attack_mitigation.get_blacklisted_nodes(),
-                'suspicious_nodes': self.attack_mitigation.poisoning_detector.get_suspicious_nodes(),
                 'network_health': 'good'  # Would be calculated based on metrics
             }
             

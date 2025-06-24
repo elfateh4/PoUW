@@ -1,0 +1,381 @@
+version: '3.8'
+
+services:
+  # Production PoUW Blockchain Cluster
+  pouw-blockchain-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: pouw/blockchain:production
+    container_name: pouw-blockchain-1
+    ports:
+      - "8545:8545"
+      - "30303:30303"
+    environment:
+      - POUW_ROLE=miner
+      - POUW_NETWORK_ID=1337
+      - POUW_LOG_LEVEL=warn
+      - POUW_NODE_ID=blockchain-node-1
+      - POUW_CLUSTER_MODE=true
+    volumes:
+      - blockchain_data_1:/data
+    networks:
+      - pouw-production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+
+  pouw-blockchain-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: pouw/blockchain:production
+    container_name: pouw-blockchain-2
+    ports:
+      - "8547:8545"
+      - "30304:30303"
+    environment:
+      - POUW_ROLE=miner
+      - POUW_NETWORK_ID=1337
+      - POUW_LOG_LEVEL=warn
+      - POUW_NODE_ID=blockchain-node-2
+      - POUW_CLUSTER_MODE=true
+    volumes:
+      - blockchain_data_2:/data
+    networks:
+      - pouw-production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+
+  pouw-blockchain-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: pouw/blockchain:production
+    container_name: pouw-blockchain-3
+    ports:
+      - "8548:8545"
+      - "30305:30303"
+    environment:
+      - POUW_ROLE=miner
+      - POUW_NETWORK_ID=1337
+      - POUW_LOG_LEVEL=warn
+      - POUW_NODE_ID=blockchain-node-3
+      - POUW_CLUSTER_MODE=true
+    volumes:
+      - blockchain_data_3:/data
+    networks:
+      - pouw-production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+
+  # Production ML Trainer Cluster
+  pouw-ml-trainer-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: pouw/ml-trainer:production
+    container_name: pouw-ml-trainer-1
+    ports:
+      - "8080:8080"
+    environment:
+      - POUW_ROLE=ml-trainer
+      - POUW_GPU_ENABLED=true
+      - POUW_NODE_ID=ml-trainer-1
+      - POUW_CLUSTER_MODE=true
+    volumes:
+      - ml_models:/models
+    networks:
+      - pouw-production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  pouw-ml-trainer-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: pouw/ml-trainer:production
+    container_name: pouw-ml-trainer-2
+    ports:
+      - "8082:8080"
+    environment:
+      - POUW_ROLE=ml-trainer
+      - POUW_GPU_ENABLED=true
+      - POUW_NODE_ID=ml-trainer-2
+      - POUW_CLUSTER_MODE=true
+    volumes:
+      - ml_models:/models
+    networks:
+      - pouw-production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # HAProxy Load Balancer
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: pouw-haproxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"  # Stats
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy/ssl:/etc/ssl/certs:ro
+    networks:
+      - pouw-production
+    restart: always
+    depends_on:
+      - pouw-blockchain-1
+      - pouw-blockchain-2
+      - pouw-blockchain-3
+      - pouw-ml-trainer-1
+      - pouw-ml-trainer-2
+
+  # PostgreSQL High Availability
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: pouw-postgres-primary
+    environment:
+      - POSTGRES_DB=pouw
+      - POSTGRES_USER=pouw
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_REPLICATION_USER=replicator
+      - POSTGRES_REPLICATION_PASSWORD=${POSTGRES_REPLICATION_PASSWORD}
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./postgresql/primary.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - pouw-production
+    restart: always
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  postgres-replica:
+    image: postgres:15-alpine
+    container_name: pouw-postgres-replica
+    environment:
+      - POSTGRES_DB=pouw
+      - POSTGRES_USER=pouw
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGUSER=postgres
+      - POSTGRES_PRIMARY_HOST=postgres-primary
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./postgresql/replica.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - pouw-production
+    restart: always
+    depends_on:
+      - postgres-primary
+
+  # Redis Cluster
+  redis-node-1:
+    image: redis:7-alpine
+    container_name: pouw-redis-1
+    ports:
+      - "7001:7000"
+    volumes:
+      - redis_data_1:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - pouw-production
+    restart: always
+    command: redis-server /usr/local/etc/redis/redis.conf --port 7000
+
+  redis-node-2:
+    image: redis:7-alpine
+    container_name: pouw-redis-2
+    ports:
+      - "7002:7000"
+    volumes:
+      - redis_data_2:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - pouw-production
+    restart: always
+    command: redis-server /usr/local/etc/redis/redis.conf --port 7000
+
+  redis-node-3:
+    image: redis:7-alpine
+    container_name: pouw-redis-3
+    ports:
+      - "7003:7000"
+    volumes:
+      - redis_data_3:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - pouw-production
+    restart: always
+    command: redis-server /usr/local/etc/redis/redis.conf --port 7000
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pouw-prometheus-prod
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus-prod.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - pouw-production
+    restart: always
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pouw-grafana-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY}
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=postgres-primary:5432
+      - GF_DATABASE_NAME=grafana
+      - GF_DATABASE_USER=grafana
+      - GF_DATABASE_PASSWORD=${GRAFANA_DB_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - pouw-production
+    restart: always
+    depends_on:
+      - postgres-primary
+      - prometheus
+
+  # Log Management
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: pouw-elasticsearch-prod
+    environment:
+      - cluster.name=pouw-cluster
+      - node.name=elasticsearch-prod
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - pouw-production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: pouw-logstash-prod
+    volumes:
+      - ./monitoring/logstash-prod/pipeline:/usr/share/logstash/pipeline
+      - ./monitoring/logstash-prod/config:/usr/share/logstash/config
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    networks:
+      - pouw-production
+    restart: always
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: pouw-kibana-prod
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+    networks:
+      - pouw-production
+    restart: always
+    depends_on:
+      - elasticsearch
+
+  # Backup Service
+  backup-service:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: pouw-backup
+    environment:
+      - BACKUP_SCHEDULE=0 2 * * *  # Daily at 2 AM
+      - S3_BUCKET=${BACKUP_S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - blockchain_data_1:/backup/blockchain_1:ro
+      - blockchain_data_2:/backup/blockchain_2:ro
+      - blockchain_data_3:/backup/blockchain_3:ro
+      - ml_models:/backup/ml_models:ro
+      - postgres_primary_data:/backup/postgres:ro
+    networks:
+      - pouw-production
+    restart: always
+
+networks:
+  pouw-production:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  blockchain_data_1:
+    driver: local
+  blockchain_data_2:
+    driver: local
+  blockchain_data_3:
+    driver: local
+  ml_models:
+    driver: local
+  postgres_primary_data:
+    driver: local
+  postgres_replica_data:
+    driver: local
+  redis_data_1:
+    driver: local
+  redis_data_2:
+    driver: local
+  redis_data_3:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
