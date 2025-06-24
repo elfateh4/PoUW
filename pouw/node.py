@@ -21,7 +21,8 @@ import torch.optim as optim
 from .blockchain import Blockchain, MLTask, PayForTaskTransaction, BuyTicketsTransaction
 from .ml import SimpleMLP, DistributedTrainer, MiniBatch, GradientUpdate
 from .mining import PoUWMiner, PoUWVerifier, MiningProof
-from .network import P2PNode, NetworkMessage, BlockchainMessageHandler, MLMessageHandler, MessageHistory
+from .network import (P2PNode, NetworkMessage, BlockchainMessageHandler, MLMessageHandler, MessageHistory,
+                     NetworkOperationsManager)
 from .economics import EconomicSystem, NodeRole, Ticket
 from .crypto import BLSThresholdCrypto, DistributedKeyGeneration, SupervisorConsensus
 from .security import AttackMitigationSystem, SecurityAlert, AttackType
@@ -61,6 +62,16 @@ class PoUWNode:
         self.worker_selector = AdvancedWorkerSelection(self.vrf)
         self.commitment_system = ZeroNonceCommitment(commitment_depth=5)
         self.merkle_tree = MessageHistoryMerkleTree()
+        
+        # Network operations manager ⭐ NEW
+        supervisor_nodes = None
+        if role == NodeRole.SUPERVISOR:
+            supervisor_nodes = []  # Will be populated during network initialization
+        self.network_operations = NetworkOperationsManager(
+            node_id=node_id, 
+            role=role.value,
+            supervisor_nodes=supervisor_nodes
+        )
         
         # Current state
         self.current_task = None
@@ -230,7 +241,11 @@ class PoUWNode:
     async def start(self):
         """Start the PoUW node"""
         await self.p2p_node.start()
-        self.logger.info(f"PoUW node {self.node_id} started")
+        
+        # Start network operations
+        await self.network_operations.start_operations()
+        
+        self.logger.info(f"PoUW node {self.node_id} started with network operations")
         
         # Start background tasks
         asyncio.create_task(self._mining_loop())
@@ -240,6 +255,10 @@ class PoUWNode:
         """Stop the PoUW node"""
         self.is_mining = False
         self.is_training = False
+        
+        # Stop network operations
+        await self.network_operations.stop_operations()
+        
         await self.p2p_node.stop()
         self.logger.info(f"PoUW node {self.node_id} stopped")
     
