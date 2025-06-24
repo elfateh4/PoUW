@@ -1,0 +1,14 @@
+numpy
+torch
+cryptography
+ecdsa
+fastapi
+uvicorn
+websockets
+aiohttp
+pytest
+pytest-asyncio
+pydantic
+click
+structlog
+colorama

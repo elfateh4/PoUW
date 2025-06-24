@@ -1,0 +1,190 @@
+# PoUW Workspace Snippets
+
+snippet "pouwtest" "PoUW Test Template"
+"""
+Unit tests for ${1:module_name}.
+"""
+
+import pytest
+import torch
+import numpy as np
+from pouw.${2:package} import ${3:ClassName}
+
+
+class Test${3:ClassName}:
+    """Test ${3:ClassName} functionality"""
+    
+    def test_${4:test_name}(self):
+        """Test ${5:description}"""
+        # Setup
+        ${6:# test setup code}
+        
+        # Execute
+        ${7:# test execution code}
+        
+        # Assert
+        ${8:# test assertions}
+        assert ${9:condition}
+
+
+if __name__ == '__main__':
+    pytest.main([__file__])
+endsnippet
+
+snippet "pouwclass" "PoUW Class Template"
+"""
+${1:Description of the module}.
+"""
+
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+import logging
+
+
+@dataclass
+class ${2:ClassName}:
+    """${3:Class description}"""
+    
+    ${4:field_name}: ${5:str}
+    ${6:# Add more fields as needed}
+    
+    def __post_init__(self):
+        """Initialize after dataclass creation"""
+        self.logger = logging.getLogger(f'{self.__class__.__name__}')
+        ${7:# Additional initialization}
+    
+    def ${8:method_name}(self) -> ${9:str}:
+        """${10:Method description}"""
+        ${11:# Method implementation}
+        return ${12:"result"}
+endsnippet
+
+snippet "pouwnode" "PoUW Node Template"
+"""
+${1:Node type} implementation for PoUW.
+"""
+
+import asyncio
+import logging
+from typing import Dict, List, Optional, Any
+from pouw.node import PoUWNode
+from pouw.economics import NodeRole
+
+
+class ${2:NodeClassName}(PoUWNode):
+    """${3:Node description}"""
+    
+    def __init__(self, node_id: str, host: str = 'localhost', port: int = 8000):
+        super().__init__(node_id, NodeRole.${4:MINER}, host, port)
+        self.logger = logging.getLogger(f'{self.__class__.__name__}')
+        ${5:# Additional initialization}
+    
+    async def ${6:custom_method}(self):
+        """${7:Method description}"""
+        ${8:# Method implementation}
+        pass
+endsnippet
+
+snippet "pouwasync" "PoUW Async Function Template"
+async def ${1:function_name}(${2:parameters}) -> ${3:return_type}:
+    """
+    ${4:Function description}.
+    
+    Args:
+        ${5:parameter}: ${6:description}
+    
+    Returns:
+        ${7:return description}
+    """
+    logger = logging.getLogger('${1:function_name}')
+    
+    try:
+        ${8:# Function implementation}
+        logger.info(f"${9:Operation completed}")
+        return ${10:result}
+    
+    except Exception as e:
+        logger.error(f"Error in ${1:function_name}: {e}")
+        raise
+endsnippet
+
+snippet "pouwml" "PoUW ML Component Template"
+"""
+Machine learning component for PoUW.
+"""
+
+import torch
+import torch.nn as nn
+import numpy as np
+from typing import Dict, List, Tuple, Any
+from pouw.ml.training import DistributedTrainer
+
+
+class ${1:ComponentName}:
+    """${2:Component description}"""
+    
+    def __init__(self, ${3:parameters}):
+        self.${4:attribute} = ${5:value}
+        ${6:# Additional initialization}
+    
+    def train_iteration(self, batch: torch.Tensor) -> Dict[str, float]:
+        """Process one training iteration"""
+        ${7:# Training logic}
+        
+        metrics = {
+            'loss': ${8:loss_value},
+            'accuracy': ${9:accuracy_value}
+        }
+        
+        return metrics
+endsnippet
+
+snippet "pouwlog" "PoUW Logging Setup"
+import logging
+
+# Setup logging
+logging.basicConfig(
+    level=logging.${1:INFO},
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('${2:logfile}.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger('${3:logger_name}')
+endsnippet
+
+snippet "pouwdemo" "PoUW Demo Script Template"
+#!/usr/bin/env python3
+"""
+${1:Demo description}.
+"""
+
+import asyncio
+import logging
+from pouw.node import PoUWNode
+from pouw.economics import NodeRole
+
+
+async def main():
+    """Main demo function"""
+    logger = logging.getLogger('${2:DemoName}')
+    
+    try:
+        # Setup
+        ${3:# Demo setup code}
+        
+        # Execute
+        ${4:# Demo execution code}
+        
+        logger.info("Demo completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Demo failed: {e}")
+        raise
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+endsnippet
