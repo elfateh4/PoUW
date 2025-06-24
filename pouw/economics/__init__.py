@@ -1,23 +1,42 @@
 """
-Economics package for PoUW implementation.
+Refactored Economics Module for PoUW.
+
+This package provides a clear, modular economic system with focused components:
+- Staking system for network participation
+- Dynamic pricing based on market conditions  
+- Reward distribution and incentive mechanisms
+- Task-worker matching algorithms
+- Profitability analysis and network economics
 """
 
-from .system import NodeRole, Ticket, StakePool, TaskMatcher, RewardScheme, EconomicSystem
-from .enhanced import (
-    DynamicPricingEngine, AdvancedRewardDistributor, EnhancedEconomicSystem,
-    MarketCondition, MarketMetrics, PerformanceMetrics, IncentiveType, EconomicIncentive
-)
-from .roi_analysis import (
-    ROIAnalyzer, ParticipantRole, CostCategory, CostStructure, RevenueStream,
-    ROIMetrics, NetworkEconomics, analyze_miner_profitability,
-    compare_pouw_vs_bitcoin_mining, calculate_network_sustainability
-)
+# Core staking system
+from .staking import NodeRole, Ticket, StakePool, StakingManager
+
+# Task assignment
+from .task_matching import TaskMatcher
+
+# Reward systems
+from .rewards import RewardScheme, RewardDistributor
+
+# Pricing and market
+from .pricing import DynamicPricingEngine, MarketCondition, MarketMetrics
+
+# Main economic system coordinator
+from .economic_system import EconomicSystem
 
 __all__ = [
-    'NodeRole', 'Ticket', 'StakePool', 'TaskMatcher', 'RewardScheme', 'EconomicSystem',
-    'DynamicPricingEngine', 'AdvancedRewardDistributor', 'EnhancedEconomicSystem',
-    'MarketCondition', 'MarketMetrics', 'PerformanceMetrics', 'IncentiveType', 'EconomicIncentive',
-    'ROIAnalyzer', 'ParticipantRole', 'CostCategory', 'CostStructure', 'RevenueStream',
-    'ROIMetrics', 'NetworkEconomics', 'analyze_miner_profitability',
-    'compare_pouw_vs_bitcoin_mining', 'calculate_network_sustainability'
+    # Staking system
+    'NodeRole', 'Ticket', 'StakePool', 'StakingManager',
+    
+    # Task matching
+    'TaskMatcher',
+    
+    # Rewards
+    'RewardScheme', 'RewardDistributor',
+    
+    # Market and pricing
+    'DynamicPricingEngine', 'MarketCondition', 'MarketMetrics',
+    
+    # Main economic system
+    'EconomicSystem'
 ]
