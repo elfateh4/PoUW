@@ -21,8 +21,7 @@ import torch.optim as optim
 from .blockchain import Blockchain, MLTask, PayForTaskTransaction, BuyTicketsTransaction
 from .ml import SimpleMLP, DistributedTrainer, MiniBatch, GradientUpdate
 from .mining import PoUWMiner, PoUWVerifier, MiningProof
-from .network import (P2PNode, NetworkMessage, BlockchainMessageHandler, MLMessageHandler, MessageHistory,
-                     NetworkOperationsManager)
+from .network import (P2PNode, NetworkMessage, BlockchainMessageHandler, MLMessageHandler, MessageHistory,NetworkOperationsManager)
 from .economics import EconomicSystem, NodeRole, Ticket
 from .crypto import BLSThresholdCrypto, DistributedKeyGeneration, SupervisorConsensus
 from .security import AttackMitigationSystem, SecurityAlert, AttackType
