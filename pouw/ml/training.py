@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 from abc import ABC, abstractmethod
 
 
@@ -73,7 +73,7 @@ class IterationMessage:
     msg_type: str = "IT_RES"
     epoch: int = 0
     iteration: int = 0
-    gradient_updates: GradientUpdate = None
+    gradient_updates: Optional[GradientUpdate] = None
     metrics: Dict[str, float] = field(default_factory=dict)
     start_time: int = 0
     finish_time: int = 0
@@ -118,6 +118,10 @@ class MLModel(ABC):
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         pass
+    
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        """Make the model callable"""
+        return self.forward(x)
     
     @abstractmethod
     def get_weights(self) -> Dict[str, torch.Tensor]:
@@ -190,8 +194,16 @@ class DistributedTrainer:
     
     def _initialize_gradient_residual(self):
         """Initialize gradient residual to zeros"""
-        for name, param in self.model.named_parameters():
-            self.gradient_residual[name] = torch.zeros_like(param)
+        # Use getattr to safely access named_parameters
+        named_params_func = getattr(self.model, 'named_parameters', None)
+        if named_params_func is not None:
+            for name, param in named_params_func():
+                self.gradient_residual[name] = torch.zeros_like(param)
+        else:
+            # Fallback for models without named_parameters
+            weights = self.model.get_weights()
+            for name, param in weights.items():
+                self.gradient_residual[name] = torch.zeros_like(param)
     
     def process_iteration(self, batch: MiniBatch, optimizer: optim.Optimizer, 
                          criterion: nn.Module) -> Tuple[IterationMessage, Dict[str, float]]:
@@ -325,11 +337,23 @@ class DistributedTrainer:
     def _linear_index_to_param(self, linear_idx: int) -> Tuple[str, int]:
         """Convert linear index to parameter name and index within parameter"""
         current_idx = 0
-        for name, param in self.model.named_parameters():
-            param_size = param.numel()
-            if linear_idx < current_idx + param_size:
-                return name, linear_idx - current_idx
-            current_idx += param_size
+        
+        # Use getattr to safely access named_parameters
+        named_params_func = getattr(self.model, 'named_parameters', None)
+        if named_params_func is not None:
+            for name, param in named_params_func():
+                param_size = param.numel()
+                if linear_idx < current_idx + param_size:
+                    return name, linear_idx - current_idx
+                current_idx += param_size
+        else:
+            # Fallback using get_weights
+            weights = self.model.get_weights()
+            for name, param in weights.items():
+                param_size = param.numel()
+                if linear_idx < current_idx + param_size:
+                    return name, linear_idx - current_idx
+                current_idx += param_size
         
         raise IndexError(f"Linear index {linear_idx} out of bounds")
     

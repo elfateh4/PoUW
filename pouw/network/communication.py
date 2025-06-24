@@ -9,7 +9,7 @@ import json
 import time
 import hashlib
 import websockets
-from typing import Dict, List, Set, Any, Optional, Callable
+from typing import Dict, List, Set, Any, Optional, Callable, Union
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 
@@ -162,7 +162,10 @@ class MLMessageHandler(MessageHandler):
     async def _handle_task_assignment(self, message: NetworkMessage):
         """Handle task assignment from network"""
         task_data = message.data.get('task')
-        print(f"Assigned to task {task_data.get('task_id', 'unknown')}")
+        if task_data:
+            print(f"Assigned to task {task_data.get('task_id', 'unknown')}")
+        else:
+            print("Received task assignment with no task data")
     
     async def _handle_heartbeat(self, message: NetworkMessage):
         """Handle heartbeat from peer"""
@@ -178,7 +181,7 @@ class P2PNode:
         self.port = port
         
         self.peers: Set[str] = set()
-        self.connections: Dict[str, websockets.WebSocketServerProtocol] = {}
+        self.connections: Dict[str, Any] = {}
         self.message_handlers: Dict[str, MessageHandler] = {}
         
         self.server = None
@@ -210,7 +213,7 @@ class P2PNode:
         
         print(f"P2P node {self.node_id} stopped")
     
-    async def handle_connection(self, websocket, path):
+    async def handle_connection(self, websocket):
         """Handle new incoming connection"""
         try:
             peer_id = None

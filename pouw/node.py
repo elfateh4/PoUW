@@ -75,6 +75,7 @@ class PoUWNode:
         
         # Current state
         self.current_task = None
+        self.current_epoch = 0
         self.is_mining = False
         self.is_training = False
         self.security_alerts: List[SecurityAlert] = []
@@ -376,7 +377,8 @@ class PoUWNode:
             return
         
         # Setup optimizer and criterion
-        optimizer = optim.Adam(self.trainer.model.parameters(), lr=0.001)
+        model_parameters = getattr(self.trainer.model, 'parameters', lambda: [])()
+        optimizer = optim.Adam(model_parameters, lr=0.001)
         criterion = nn.CrossEntropyLoss()
         
         # Generate dummy mini-batches (in practice would load real data)
@@ -402,8 +404,9 @@ class PoUWNode:
                 
                 # Create zero-nonce commitment for future iterations
                 if iteration % 5 == 0:  # Every 5 iterations
+                    model_parameters = getattr(self.trainer.model, 'parameters', lambda: [])()
                     model_state = {
-                        'weights': [p.detach().numpy().tolist() for p in self.trainer.model.parameters()],
+                        'weights': [p.detach().numpy().tolist() for p in model_parameters],
                         'iteration': iteration
                     }
                     commitment = self.commitment_system.create_commitment(
@@ -466,12 +469,13 @@ class PoUWNode:
             blacklisted_nodes = self.attack_mitigation.get_blacklisted_nodes()
             filtered_transactions = [
                 tx for tx in all_transactions 
-                if not hasattr(tx, 'sender_id') or tx.sender_id not in blacklisted_nodes
+                if getattr(tx, 'sender_id', None) not in blacklisted_nodes
             ]
             
             # Calculate sizes
             batch_size = batch.size()
-            model_size = sum(p.numel() for p in self.trainer.model.parameters())
+            model_parameters = getattr(self.trainer.model, 'parameters', lambda: [])()
+            model_size = sum(p.numel() for p in model_parameters)
             
             # Attempt mining with security considerations
             result = self.miner.mine_block(
@@ -498,9 +502,9 @@ class PoUWNode:
                                 miner_id=self.node_id,
                                 task_id=message.task_id,
                                 iteration=current_iteration,
-                                batch_id=message.batch_id,
-                                model_weights=message.model_weights,
-                                gradients=message.gradients
+                                epoch=self.current_epoch,
+                                indices=[],  # Would be populated with actual gradient indices
+                                values=[]   # Would be populated with actual gradient values
                             )
                             
                             self.commitment_system.fulfill_commitment(

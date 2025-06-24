@@ -845,7 +845,7 @@ class VPNMeshTopologyManager:
         
         raise ValueError("No available IP addresses in mesh network")
     
-    def establish_tunnel(self, remote_node_id: str, protocol: str = None) -> bool:
+    def establish_tunnel(self, remote_node_id: str, protocol: Optional[str] = None) -> bool:
         """Establish a VPN tunnel to a remote node"""
         if remote_node_id not in self.mesh_nodes:
             self.logger.error(f"Cannot establish tunnel: unknown node {remote_node_id}")
@@ -969,7 +969,7 @@ class NetworkOperationsManager:
     message compression, and VPN mesh topology management.
     """
     
-    def __init__(self, node_id: str, role: str, supervisor_nodes: List[str] = None):
+    def __init__(self, node_id: str, role: str, supervisor_nodes: Optional[List[str]] = None):
         self.node_id = node_id
         self.role = role
         
@@ -981,7 +981,7 @@ class NetworkOperationsManager:
         
         # Leader election only for supervisors
         self.leader_election = None
-        if role == "supervisor" and supervisor_nodes:
+        if role == "supervisor" and supervisor_nodes is not None:
             self.leader_election = LeaderElectionManager(node_id, supervisor_nodes)
         
         # Operation scheduling
