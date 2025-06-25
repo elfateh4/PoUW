@@ -2,9 +2,9 @@ name: Deploy to Hostinger VPS
 
 on:
   push:
-    branches: main
+    branches: [main]
   pull_request:
-    branches: main
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -16,24 +16,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Install and test
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run tests
-        run: |
-          pip install pytest pytest-cov
-          python -m pytest tests/ -v --tb=short --cov=pouw --cov-report=xml
+          pip install -r requirements.txt pytest pytest-cov
+          pytest tests/ -v --tb=short --cov=pouw --cov-report=xml
 
   build-and-push:
     needs: test
@@ -44,13 +38,11 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Docker login
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -64,11 +56,10 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=${{ github.ref_name }}-
+            type=raw,value=latest,enable=true
 
-      - name: Build and push Docker image
+      - name: Build and push image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -84,10 +75,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Deploy to Hostinger VPS
+      - name: Deploy via SSH to Hostinger
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -95,32 +85,35 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            # Navigate to application directory
-            cd /opt/pouw || { echo "Directory /opt/pouw not found. Creating..."; sudo mkdir -p /opt/pouw; cd /opt/pouw; }
+            set -e
 
-            # Stop existing containers
+            echo "📦 Ensuring app directory exists..."
+            sudo mkdir -p /opt/pouw && cd /opt/pouw
+
+            echo "🧹 Stopping existing containers..."
             sudo docker-compose -f docker-compose.production.yml down || true
 
-            # Pull latest changes
-            if [ -d ".git" ]; then
+            echo "🔁 Updating repo..."
+            if [ -d .git ]; then
+              git reset --hard
               git pull origin main
             else
               git clone https://github.com/${{ github.repository }}.git .
             fi
 
-            # Log in to GitHub Container Registry
-            echo ${{ secrets.GITHUB_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "🔐 Logging in to GitHub Container Registry..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Pull latest image
+            echo "📥 Pulling latest image..."
             sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-            # Start services
-            sudo docker-compose -f docker-compose.production.yml up -d
+            echo "🚀 Starting services..."
+            sudo docker-compose -f docker-compose.production.yml up -d --remove-orphans
 
-            # Clean up old images
+            echo "🧼 Cleaning up old images..."
             sudo docker image prune -f
 
-            # Show status
+            echo "✅ Current service status:"
             sudo docker-compose -f docker-compose.production.yml ps
 
   health-check:
@@ -128,25 +121,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Wait for deployment
+      - name: Wait for containers to be ready
         run: sleep 60
 
-      - name: Health check
+      - name: Perform health check
         run: |
-          # Replace with your actual domain/IP
           HEALTH_URL="http://${{ secrets.VPS_HOST }}/health"
+          echo "🔎 Checking health at $HEALTH_URL"
 
           for i in {1..5}; do
-            if curl -f $HEALTH_URL; then
-              echo "Health check passed!"
+            if curl -sf $HEALTH_URL; then
+              echo "✅ Health check passed!"
               exit 0
             else
-              echo "Health check attempt $i failed. Retrying..."
-              sleep 30
+              echo "❌ Attempt $i failed... retrying"
+              sleep 20
             fi
           done
 
-          echo "Health check failed after 5 attempts"
+          echo "💀 Health check failed after 5 attempts"
           exit 1
 
   notify:
@@ -155,15 +148,15 @@ jobs:
     if: always()
 
     steps:
-      - name: Notify deployment status
+      - name: Slack Notification
         uses: 8398a7/action-slack@v3
         if: env.SLACK_WEBHOOK_URL != ''
         with:
           status: ${{ job.status }}
           text: |
-            Deployment to Hostinger VPS: ${{ job.status }}
-            Repository: ${{ github.repository }}
-            Branch: ${{ github.ref }}
-            Commit: ${{ github.sha }}
+            🚀 Deployment to Hostinger VPS: *${{ job.status }}*
+            📁 Repository: `${{ github.repository }}`
+            🔀 Branch: `${{ github.ref }}`
+            🔢 Commit: `${{ github.sha }}`
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

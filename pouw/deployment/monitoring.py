@@ -435,8 +435,9 @@ class LoggingManager:
                     "lineno": record.lineno,
                 }
 
-                if hasattr(record, "extra"):
-                    structured_log.update(record.extra)
+                extra_data = getattr(record, "extra", None)
+                if extra_data:
+                    structured_log.update(extra_data)
 
                 self.structured_logs.append(structured_log)
 
@@ -529,10 +530,8 @@ class HealthChecker:
             tasks = []
 
             for component, check_func in self.health_checks.items():
-                task = asyncio.create_task(
-                    asyncio.get_event_loop().run_in_executor(executor, check_func)
-                )
-                tasks.append((component, task))
+                future = asyncio.get_event_loop().run_in_executor(executor, check_func)
+                tasks.append((component, future))
 
             for component, task in tasks:
                 try:
@@ -550,7 +549,7 @@ class HealthChecker:
 
     def get_health_status(
         self, component: Optional[str] = None
-    ) -> Union[HealthStatus, Dict[str, HealthStatus]]:
+    ) -> Union[HealthStatus, Dict[str, HealthStatus], None]:
         """Get health status for component(s)"""
         if component:
             return self.health_status.get(component)
@@ -775,6 +774,14 @@ class ProductionMonitor:
         latest_metrics = self.metrics_collector.get_latest_metrics()
         active_alerts = self.alerting_system.get_active_alerts()
         health_status = self.health_checker.get_health_status()
+        
+        # Ensure health_status is always a dictionary for the dashboard
+        if isinstance(health_status, HealthStatus):
+            health_status_dict = {"default": health_status}
+        elif health_status is None:
+            health_status_dict = {}
+        else:
+            health_status_dict = health_status
         performance_analysis = self.performance_analyzer.analyze_performance(timedelta(hours=1))
         recent_logs = self.logging_manager.get_recent_logs(50)
 
@@ -803,7 +810,7 @@ class ProductionMonitor:
                     "last_check": status.last_check.isoformat(),
                     "details": status.details,
                 }
-                for name, status in health_status.items()
+                for name, status in health_status_dict.items()
             },
             "performance": performance_analysis,
             "logs": recent_logs,
