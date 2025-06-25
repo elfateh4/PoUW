@@ -80,9 +80,7 @@ class ComprehensiveSecurityMonitor:
                 events.append(event)
 
         # Temporal anomaly detection
-        event = self.anomaly_detector.detect_temporal_anomalies(
-            node_id, time.time()
-        )
+        event = self.anomaly_detector.detect_temporal_anomalies(node_id, time.time())
         if event:
             events.append(event)
 
@@ -92,7 +90,7 @@ class ComprehensiveSecurityMonitor:
                 node_id,
                 activity_data["network_connections"],
                 activity_data["message_count"],
-                activity_data.get("time_window", 60)
+                activity_data.get("time_window", 60),
             )
             # Convert SecurityAlerts to SecurityEvents
             for alert in intrusion_alerts:
@@ -103,7 +101,7 @@ class ComprehensiveSecurityMonitor:
                     timestamp=alert.timestamp,
                     severity=SecurityLevel.HIGH,  # Map from alert confidence
                     metadata=alert.evidence,
-                    confidence_score=alert.confidence
+                    confidence_score=alert.confidence,
                 )
                 events.append(event)
 
@@ -123,7 +121,7 @@ class ComprehensiveSecurityMonitor:
     ) -> tuple[bool, str | None]:
         """Process authentication request through security monitoring"""
         success, result = self.authentication.authenticate_node(node_id, signature, challenge)
-        
+
         # Log authentication events
         if not success:
             auth_event = SecurityEvent(
@@ -133,10 +131,10 @@ class ComprehensiveSecurityMonitor:
                 timestamp=int(time.time()),
                 severity=SecurityLevel.MEDIUM,
                 metadata={"reason": result or "Unknown authentication failure"},
-                confidence_score=1.0
+                confidence_score=1.0,
             )
             self.all_security_events.append(auth_event)
-        
+
         return success, result
 
     def get_security_dashboard(self) -> Dict[str, Any]:
@@ -145,9 +143,7 @@ class ComprehensiveSecurityMonitor:
 
         # Recent events (last hour)
         recent_events = [
-            event
-            for event in self.all_security_events
-            if current_time - event.timestamp < 3600
+            event for event in self.all_security_events if current_time - event.timestamp < 3600
         ]
 
         # Node risk analysis
@@ -167,7 +163,7 @@ class ComprehensiveSecurityMonitor:
 
         # Authentication statistics
         auth_stats = self.authentication.get_authentication_statistics()
-        
+
         # Network intrusion statistics
         network_stats = self.intrusion_detection.get_network_statistics()
 
@@ -177,12 +173,14 @@ class ComprehensiveSecurityMonitor:
             "node_security": {
                 "total_monitored": total_nodes,
                 "high_risk_count": high_risk_nodes,
-                "risk_threshold_exceeded": high_risk_nodes > self.alert_thresholds["high_risk_nodes_threshold"]
+                "risk_threshold_exceeded": high_risk_nodes
+                > self.alert_thresholds["high_risk_nodes_threshold"],
             },
             "recent_activity": {
                 "events_count": len(recent_events),
                 "events_by_severity": severity_counts,
-                "critical_alerts": severity_counts["critical"] > self.alert_thresholds["critical_events_per_hour"]
+                "critical_alerts": severity_counts["critical"]
+                > self.alert_thresholds["critical_events_per_hour"],
             },
             "authentication": auth_stats,
             "network_security": network_stats,
@@ -229,23 +227,23 @@ class ComprehensiveSecurityMonitor:
                 "period_hours": time_period // 3600,
                 "start_time": start_time,
                 "end_time": current_time,
-                "generated_at": current_time
+                "generated_at": current_time,
             },
             "executive_summary": {
                 "total_events": len(period_events),
                 "security_level": security_assessment["overall_level"],
                 "critical_issues": security_assessment["critical_issues"],
-                "improvement_trend": security_assessment["trend"]
+                "improvement_trend": security_assessment["trend"],
             },
             "detailed_analysis": {
                 "anomaly_trends": dict(anomaly_trends),
                 "node_risk_distribution": node_risk_distribution,
                 "event_timeline": event_timeline,
                 "authentication_analysis": self._analyze_authentication_patterns(),
-                "network_threat_analysis": self._analyze_network_threats()
+                "network_threat_analysis": self._analyze_network_threats(),
             },
             "recommendations": self._generate_security_recommendations(),
-            "metrics": self.security_metrics
+            "metrics": self.security_metrics,
         }
 
     def get_node_security_profile(self, node_id: str) -> Dict[str, Any]:
@@ -253,16 +251,17 @@ class ComprehensiveSecurityMonitor:
         # Behavioral profile
         behavior_profile = self.anomaly_detector.get_node_profile(node_id)
         risk_score = self.anomaly_detector.get_node_risk_score(node_id)
-        
+
         # Authentication history
         capabilities = self.authentication.get_node_capabilities(node_id)
-        
+
         # Threat assessment
         threat_level = self.intrusion_detection.get_node_threat_level(node_id)
-        
+
         # Recent events
         recent_events = [
-            event for event in self.all_security_events
+            event
+            for event in self.all_security_events
             if event.node_id == node_id and time.time() - event.timestamp <= 3600
         ]
 
@@ -271,66 +270,80 @@ class ComprehensiveSecurityMonitor:
             "risk_assessment": {
                 "risk_score": risk_score,
                 "threat_level": threat_level,
-                "risk_category": "high" if risk_score < 0.3 else "medium" if risk_score < 0.7 else "low"
+                "risk_category": (
+                    "high" if risk_score < 0.3 else "medium" if risk_score < 0.7 else "low"
+                ),
             },
             "behavioral_profile": {
                 "trust_score": behavior_profile.trust_score if behavior_profile else 1.0,
                 "reputation_score": behavior_profile.reputation_score if behavior_profile else 1.0,
-                "monitored_since": behavior_profile.creation_time if behavior_profile else None
+                "monitored_since": behavior_profile.creation_time if behavior_profile else None,
             },
             "authentication": {
                 "capabilities": capabilities or [],
-                "registered": capabilities is not None
+                "registered": capabilities is not None,
             },
             "recent_activity": {
                 "event_count": len(recent_events),
-                "severity_breakdown": self._categorize_events_by_severity(recent_events)
-            }
+                "severity_breakdown": self._categorize_events_by_severity(recent_events),
+            },
         }
 
     def _update_security_metrics(self):
         """Update internal security metrics"""
         current_time = time.time()
-        
+
         # Calculate metrics
         recent_events = [
-            event for event in self.all_security_events
-            if current_time - event.timestamp <= 3600
+            event for event in self.all_security_events if current_time - event.timestamp <= 3600
         ]
-        
-        self.security_metrics.update({
-            "events_per_hour": len(recent_events),
-            "average_risk_score": self._calculate_average_risk_score(),
-            "authentication_success_rate": self._calculate_auth_success_rate(),
-            "network_health_score": self._calculate_network_health(),
-            "last_update": current_time
-        })
+
+        self.security_metrics.update(
+            {
+                "events_per_hour": len(recent_events),
+                "average_risk_score": self._calculate_average_risk_score(),
+                "authentication_success_rate": self._calculate_auth_success_rate(),
+                "network_health_score": self._calculate_network_health(),
+                "last_update": current_time,
+            }
+        )
 
     def _check_automatic_responses(self, events: List[SecurityEvent]):
         """Check if automatic security responses should be triggered"""
         for event in events:
             if event.severity == SecurityLevel.CRITICAL:
-                self.logger.critical(f"Critical security event detected: {event.event_type} from {event.node_id}")
+                self.logger.critical(
+                    f"Critical security event detected: {event.event_type} from {event.node_id}"
+                )
                 # In a real system, this would trigger automatic mitigation
             elif event.severity == SecurityLevel.HIGH and event.confidence_score > 0.8:
-                self.logger.warning(f"High confidence threat detected: {event.event_type} from {event.node_id}")
+                self.logger.warning(
+                    f"High confidence threat detected: {event.event_type} from {event.node_id}"
+                )
 
     def _calculate_system_health(self) -> str:
         """Calculate overall system security health"""
         current_time = time.time()
-        
+
         # Count recent critical events
-        recent_critical = len([
-            event for event in self.all_security_events
-            if event.severity == SecurityLevel.CRITICAL and current_time - event.timestamp <= 3600
-        ])
-        
+        recent_critical = len(
+            [
+                event
+                for event in self.all_security_events
+                if event.severity == SecurityLevel.CRITICAL
+                and current_time - event.timestamp <= 3600
+            ]
+        )
+
         # Count high-risk nodes
-        high_risk_nodes = len([
-            node_id for node_id in self.anomaly_detector.node_profiles
-            if self.anomaly_detector.get_node_risk_score(node_id) < 0.3
-        ])
-        
+        high_risk_nodes = len(
+            [
+                node_id
+                for node_id in self.anomaly_detector.node_profiles
+                if self.anomaly_detector.get_node_risk_score(node_id) < 0.3
+            ]
+        )
+
         if recent_critical > 5 or high_risk_nodes > 5:
             return "CRITICAL"
         elif recent_critical > 2 or high_risk_nodes > 2:
@@ -347,10 +360,11 @@ class ComprehensiveSecurityMonitor:
 
         # Check for high-risk nodes
         high_risk_nodes = [
-            node_id for node_id in self.anomaly_detector.node_profiles
+            node_id
+            for node_id in self.anomaly_detector.node_profiles
             if self.anomaly_detector.get_node_risk_score(node_id) < 0.3
         ]
-        
+
         if high_risk_nodes:
             recommendations.append(
                 f"Review {len(high_risk_nodes)} high-risk nodes: {', '.join(high_risk_nodes[:5])}{'...' if len(high_risk_nodes) > 5 else ''}"
@@ -358,10 +372,11 @@ class ComprehensiveSecurityMonitor:
 
         # Check for recent critical events
         recent_critical = [
-            event for event in self.all_security_events
+            event
+            for event in self.all_security_events
             if event.severity == SecurityLevel.CRITICAL and current_time - event.timestamp <= 1800
         ]
-        
+
         if recent_critical:
             recommendations.append(
                 f"Address {len(recent_critical)} critical security events immediately"
@@ -390,7 +405,7 @@ class ComprehensiveSecurityMonitor:
         """Assess overall security posture based on events"""
         critical_count = len([e for e in events if e.severity == SecurityLevel.CRITICAL])
         high_count = len([e for e in events if e.severity == SecurityLevel.HIGH])
-        
+
         if critical_count > 5:
             level = "CRITICAL"
         elif critical_count > 0 or high_count > 10:
@@ -399,23 +414,25 @@ class ComprehensiveSecurityMonitor:
             level = "MEDIUM"
         else:
             level = "LOW"
-        
+
         return {
             "overall_level": level,
             "critical_issues": critical_count,
-            "trend": "improving" if len(events) < len(self.all_security_events) // 2 else "stable"
+            "trend": "improving" if len(events) < len(self.all_security_events) // 2 else "stable",
         }
 
     def _create_event_timeline(self, events: List[SecurityEvent]) -> List[Dict[str, Any]]:
         """Create timeline of security events"""
         timeline = []
         for event in sorted(events, key=lambda x: x.timestamp):
-            timeline.append({
-                "timestamp": event.timestamp,
-                "event_type": event.event_type,
-                "severity": event.severity.value,
-                "node_id": event.node_id
-            })
+            timeline.append(
+                {
+                    "timestamp": event.timestamp,
+                    "event_type": event.event_type,
+                    "severity": event.severity.value,
+                    "node_id": event.node_id,
+                }
+            )
         return timeline[-20:]  # Return last 20 events
 
     def _analyze_authentication_patterns(self) -> Dict[str, Any]:
@@ -425,7 +442,7 @@ class ComprehensiveSecurityMonitor:
             "total_registered_nodes": stats.get("total_registered_nodes", 0),
             "active_sessions": stats.get("active_sessions", 0),
             "failed_attempts": stats.get("failed_authentications", 0),
-            "suspicious_patterns": stats.get("failed_authentications", 0) > 5
+            "suspicious_patterns": stats.get("failed_authentications", 0) > 5,
         }
 
     def _analyze_network_threats(self) -> Dict[str, Any]:
@@ -435,7 +452,11 @@ class ComprehensiveSecurityMonitor:
             "monitored_nodes": stats.get("total_monitored_nodes", 0),
             "recent_alerts": stats.get("recent_alerts", 0),
             "attack_types_detected": stats.get("attack_types_seen", 0),
-            "threat_level": "high" if stats.get("recent_alerts", 0) > 5 else "medium" if stats.get("recent_alerts", 0) > 0 else "low"
+            "threat_level": (
+                "high"
+                if stats.get("recent_alerts", 0) > 5
+                else "medium" if stats.get("recent_alerts", 0) > 0 else "low"
+            ),
         }
 
     def _categorize_events_by_severity(self, events: List[SecurityEvent]) -> Dict[str, int]:
@@ -449,7 +470,7 @@ class ComprehensiveSecurityMonitor:
         """Calculate average risk score across all nodes"""
         if not self.anomaly_detector.node_profiles:
             return 1.0
-        
+
         scores = [
             self.anomaly_detector.get_node_risk_score(node_id)
             for node_id in self.anomaly_detector.node_profiles
@@ -461,17 +482,17 @@ class ComprehensiveSecurityMonitor:
         stats = self.authentication.get_authentication_statistics()
         total_attempts = stats.get("total_registered_nodes", 0)
         failed_attempts = stats.get("failed_authentications", 0)
-        
+
         if total_attempts == 0:
             return 1.0
-        
+
         return max(0.0, 1.0 - (failed_attempts / total_attempts))
 
     def _calculate_network_health(self) -> float:
         """Calculate network security health score"""
         stats = self.intrusion_detection.get_network_statistics()
         recent_alerts = stats.get("recent_alerts", 0)
-        
+
         # Simple scoring: 1.0 - (alerts / max_expected_alerts)
         return max(0.0, 1.0 - (recent_alerts / 10.0))
 

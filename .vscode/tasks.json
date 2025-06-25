@@ -2,47 +2,6 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run Complete Demo",
-            "type": "shell",
-            "command": "${workspaceFolder}/venv/bin/python",
-            "args": [
-                "${workspaceFolder}/demo_complete.py"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Run Demo Script",
-            "type": "shell",
-            "command": "${workspaceFolder}/venv/bin/python",
-            "args": [
-                "${workspaceFolder}/scripts/demo.py",
-                "--miners",
-                "2",
-                "--supervisors",
-                "1",
-                "--duration",
-                "120"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new"
-            },
-            "problemMatcher": []
-        },
-        {
             "label": "Run All Tests",
             "type": "shell",
             "command": "${workspaceFolder}/venv/bin/python",
@@ -53,7 +12,10 @@
                 "-v",
                 "--tb=short"
             ],
-            "group": "test",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",

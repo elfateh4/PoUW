@@ -16,19 +16,20 @@ sys.path.insert(0, str(project_root))
 
 from config import get_config_manager
 
-def generate_nginx_config(environment='production'):
+
+def generate_nginx_config(environment="production"):
     """Generate nginx configuration based on environment settings"""
-    
+
     config_manager = get_config_manager(environment=environment)
     config = config_manager.get_config()
-    
+
     # Get configuration values
     domain = config.deployment.domain
     enable_ssl = config.deployment.enable_ssl
     node_port = config.node.port
     dashboard_port = config.monitoring.dashboard_port
     vps_ip = config.deployment.vps_ip
-    
+
     # Generate nginx configuration
     nginx_config = f"""events {{
     worker_connections 1024;
@@ -218,37 +219,42 @@ http {{
     }}
 }}
 """
-    
+
     return nginx_config
+
 
 def main():
     """Main function to generate nginx configuration"""
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Generate nginx configuration for PoUW')
-    parser.add_argument('--environment', '-e', default='production',
-                       choices=['development', 'production'],
-                       help='Environment configuration to use')
-    parser.add_argument('--output', '-o', type=str,
-                       help='Output file path (default: stdout)')
-    
+
+    parser = argparse.ArgumentParser(description="Generate nginx configuration for PoUW")
+    parser.add_argument(
+        "--environment",
+        "-e",
+        default="production",
+        choices=["development", "production"],
+        help="Environment configuration to use",
+    )
+    parser.add_argument("--output", "-o", type=str, help="Output file path (default: stdout)")
+
     args = parser.parse_args()
-    
+
     try:
         config_text = generate_nginx_config(args.environment)
-        
+
         if args.output:
             output_path = Path(args.output)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 f.write(config_text)
             print(f"✅ Nginx configuration written to {output_path}")
         else:
             print(config_text)
-            
+
     except Exception as e:
         print(f"❌ Error generating nginx configuration: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

@@ -26,7 +26,7 @@ from pouw.security import (
     IntrusionDetectionSystem,
     SecurityLevel,
     AnomalyType,
-    AttackType
+    AttackType,
 )
 from pouw.ml.training import GradientUpdate
 
@@ -94,9 +94,7 @@ def demo_anomaly_detection():
         values=[50.0 for _ in range(100)],  # Abnormally large
     )
 
-    gradient_event = detector.analyze_gradient_pattern(
-        "honest_miner_1", poisoned_gradient
-    )
+    gradient_event = detector.analyze_gradient_pattern("honest_miner_1", poisoned_gradient)
     if gradient_event:
         print(f"🚨 GRADIENT ANOMALY: {gradient_event.event_type}")
         print(f"   Z-score: {gradient_event.metadata.get('z_score', 'N/A'):.2f}")
@@ -119,9 +117,7 @@ def demo_anomaly_detection():
     for node in honest_nodes + [suspicious_node]:
         risk_score = detector.get_node_risk_score(node)
         risk_level = (
-            "🟢 LOW"
-            if risk_score > 0.7
-            else "🟡 MEDIUM" if risk_score > 0.3 else "🔴 HIGH"
+            "🟢 LOW" if risk_score > 0.7 else "🟡 MEDIUM" if risk_score > 0.3 else "🔴 HIGH"
         )
         print(f"   {node}: {risk_score:.2f} ({risk_level})")
 
@@ -148,9 +144,7 @@ def demo_advanced_authentication():
 
     print("📝 Registering node credentials...")
     for node_id, public_key, capabilities, stake in nodes_config:
-        credential_hash = auth.register_node_credentials(
-            node_id, public_key, capabilities, stake
-        )
+        credential_hash = auth.register_node_credentials(node_id, public_key, capabilities, stake)
         print(f"   ✅ {node_id}: {capabilities} (stake: {stake})")
 
     # Demonstrate successful authentication
@@ -197,9 +191,7 @@ def demo_advanced_authentication():
     for i in range(12):
         auth.authenticate_node("limited_node_1", wrong_signature, challenge)
 
-    success, error = auth.authenticate_node(
-        "limited_node_1", wrong_signature, challenge
-    )
+    success, error = auth.authenticate_node("limited_node_1", wrong_signature, challenge)
     if not success and "rate limit" in error.lower():
         print(f"   🛑 Rate limiting active: {error}")
 
@@ -224,9 +216,7 @@ def demo_intrusion_detection():
     flooding_node = "flooding_node"
     alerts = ids.analyze_network_behavior(flooding_node, normal_connections, 200, 30)
     if alerts:
-        dos_alert = next(
-            (a for a in alerts if a.alert_type == AttackType.DOS_ATTACK), None
-        )
+        dos_alert = next((a for a in alerts if a.alert_type == AttackType.DOS_ATTACK), None)
         if dos_alert:
             print(f"   🚨 DOS ATTACK detected from {flooding_node}")
             print(f"      Rate: {dos_alert.evidence['rate']:.1f} messages/second")
@@ -236,9 +226,7 @@ def demo_intrusion_detection():
     many_connections = [f"sybil_peer_{i}" for i in range(60)]
     alerts = ids.analyze_network_behavior(sybil_node, many_connections, 10, 60)
     if alerts:
-        sybil_alert = next(
-            (a for a in alerts if a.alert_type == AttackType.SYBIL_ATTACK), None
-        )
+        sybil_alert = next((a for a in alerts if a.alert_type == AttackType.SYBIL_ATTACK), None)
         if sybil_alert:
             print(f"   🚨 SYBIL ATTACK detected from {sybil_node}")
             print(f"      Connections: {sybil_alert.evidence['connection_count']}")

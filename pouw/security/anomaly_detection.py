@@ -3,7 +3,7 @@ Behavioral Anomaly Detection Module for PoUW Security.
 
 This module provides advanced behavioral anomaly detection including:
 - Computational pattern analysis
-- Network communication monitoring  
+- Network communication monitoring
 - Gradient pattern detection
 - Temporal behavior analysis
 """
@@ -118,26 +118,24 @@ class BehavioralAnomalyDetector:
         times = list(profile.recent_computation_times)
         if len(times) >= 10:
             # Use all times except the current one for baseline statistics
-            baseline_times = times[:-1] if len(times) > 10 else times[:-1] if len(times) == 10 else times
-            
+            baseline_times = (
+                times[:-1] if len(times) > 10 else times[:-1] if len(times) == 10 else times
+            )
+
             if len(baseline_times) >= 5:  # Need at least 5 baseline measurements
                 profile.avg_computation_time = float(np.mean(baseline_times))
                 profile.computation_variance = float(np.var(baseline_times))
 
                 # Detect computational anomalies
                 variance_sqrt = np.sqrt(profile.computation_variance) + 1e-6
-                z_score = (
-                    abs(computation_time - profile.avg_computation_time) / variance_sqrt
-                )
+                z_score = abs(computation_time - profile.avg_computation_time) / variance_sqrt
 
                 threshold = self.anomaly_thresholds[AnomalyType.COMPUTATIONAL]
                 if z_score > threshold:
                     return self._create_security_event(
                         node_id=node_id,
                         event_type="computational_anomaly",
-                        severity=(
-                            SecurityLevel.HIGH if z_score > 5 else SecurityLevel.MEDIUM
-                        ),
+                        severity=(SecurityLevel.HIGH if z_score > 5 else SecurityLevel.MEDIUM),
                         anomaly_type=AnomalyType.COMPUTATIONAL,
                         metadata={
                             "computation_time": computation_time,
@@ -251,9 +249,7 @@ class BehavioralAnomalyDetector:
             # Check the most recent intervals (at least 4 to detect burst)
             if len(intervals) >= 4:
                 recent_intervals = intervals[-4:]  # Last 4 intervals
-                if all(
-                    interval < 1 for interval in recent_intervals
-                ):  # Less than 1 second apart
+                if all(interval < 1 for interval in recent_intervals):  # Less than 1 second apart
                     return self._create_security_event(
                         node_id=node_id,
                         event_type="message_burst_detected",
@@ -261,7 +257,8 @@ class BehavioralAnomalyDetector:
                         anomaly_type=AnomalyType.TEMPORAL,
                         metadata={
                             "burst_intervals": recent_intervals,
-                            "message_count": len(recent_intervals) + 1,  # +1 for the actual message count
+                            "message_count": len(recent_intervals)
+                            + 1,  # +1 for the actual message count
                         },
                         confidence_score=0.8,
                     )
@@ -282,8 +279,7 @@ class BehavioralAnomalyDetector:
         recent_events = [
             event
             for event in self.security_events
-            if event.node_id == node_id
-            and event.timestamp > (time.time() - 3600)  # Last hour
+            if event.node_id == node_id and event.timestamp > (time.time() - 3600)  # Last hour
         ]
 
         risk_penalty = 0.0
@@ -309,8 +305,7 @@ class BehavioralAnomalyDetector:
         """Get security events from the specified time window (default: 1 hour)"""
         current_time = time.time()
         return [
-            event for event in self.security_events
-            if current_time - event.timestamp <= time_window
+            event for event in self.security_events if current_time - event.timestamp <= time_window
         ]
 
     def clear_security_events(self) -> None:
@@ -328,9 +323,9 @@ class BehavioralAnomalyDetector:
     ) -> SecurityEvent:
         """Create a security event for behavioral anomalies"""
         event = SecurityEvent(
-            event_id=hashlib.sha256(
-                f"{node_id}{event_type}{time.time()}".encode()
-            ).hexdigest()[:16],
+            event_id=hashlib.sha256(f"{node_id}{event_type}{time.time()}".encode()).hexdigest()[
+                :16
+            ],
             event_type=event_type,
             node_id=node_id,
             timestamp=int(time.time()),
@@ -341,8 +336,6 @@ class BehavioralAnomalyDetector:
         )
 
         self.security_events.append(event)
-        self.logger.warning(
-            f"Behavioral anomaly detected: {event.event_type} for node {node_id}"
-        )
+        self.logger.warning(f"Behavioral anomaly detected: {event.event_type} for node {node_id}")
 
         return event

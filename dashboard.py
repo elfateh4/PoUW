@@ -27,6 +27,7 @@ try:
 except ImportError:
     print("FastAPI not installed. Installing...")
     import subprocess
+
     subprocess.run(["pip", "install", "fastapi", "uvicorn", "websockets"])
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect
     from fastapi.staticfiles import StaticFiles
@@ -385,15 +386,11 @@ async def get_nodes():
 @app.post("/api/nodes/{node_id}/update")
 async def update_node(node_id: str, node_data: dict):
     """Update node status"""
-    network_nodes[node_id] = {
-        **node_data,
-        "last_seen": time.time(),
-        "status": "online"
-    }
-    
+    network_nodes[node_id] = {**node_data, "last_seen": time.time(), "status": "online"}
+
     # Broadcast update to all connected websockets
     await broadcast_update()
-    
+
     return {"status": "updated"}
 
 
@@ -402,19 +399,17 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time updates"""
     await websocket.accept()
     websocket_connections.append(websocket)
-    
+
     try:
         # Send initial data
-        await websocket.send_text(json.dumps({
-            "type": "network_update",
-            "nodes": network_nodes,
-            "timestamp": time.time()
-        }))
-        
+        await websocket.send_text(
+            json.dumps({"type": "network_update", "nodes": network_nodes, "timestamp": time.time()})
+        )
+
         # Keep connection alive
         while True:
             await websocket.receive_text()
-            
+
     except WebSocketDisconnect:
         websocket_connections.remove(websocket)
 
@@ -422,20 +417,18 @@ async def websocket_endpoint(websocket: WebSocket):
 async def broadcast_update():
     """Broadcast network update to all connected websockets"""
     if websocket_connections:
-        message = json.dumps({
-            "type": "network_update", 
-            "nodes": network_nodes,
-            "timestamp": time.time()
-        })
-        
+        message = json.dumps(
+            {"type": "network_update", "nodes": network_nodes, "timestamp": time.time()}
+        )
+
         # Remove disconnected websockets
         disconnected = []
         for websocket in websocket_connections:
             try:
-                await websocket.send_text(message);
+                await websocket.send_text(message)
             except:
                 disconnected.append(websocket)
-        
+
         for ws in disconnected:
             websocket_connections.remove(ws)
 
@@ -444,15 +437,15 @@ async def cleanup_offline_nodes():
     """Remove nodes that haven't been seen for a while"""
     current_time = time.time()
     offline_threshold = 60  # 60 seconds
-    
+
     offline_nodes = []
     for node_id, node_data in network_nodes.items():
         if current_time - node_data.get("last_seen", 0) > offline_threshold:
             offline_nodes.append(node_id)
-    
+
     for node_id in offline_nodes:
         network_nodes[node_id]["status"] = "offline"
-    
+
     if offline_nodes:
         await broadcast_update()
 
@@ -473,40 +466,46 @@ async def periodic_cleanup():
 if __name__ == "__main__":
     import uvicorn
     import argparse
-    
+
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description='PoUW Network Dashboard')
-    parser.add_argument('--host', type=str, help='Host address to bind to')
-    parser.add_argument('--port', type=int, help='Port to bind to')
-    parser.add_argument('--environment', type=str, default='development',
-                       choices=['development', 'production'], 
-                       help='Environment configuration to use')
-    
+    parser = argparse.ArgumentParser(description="PoUW Network Dashboard")
+    parser.add_argument("--host", type=str, help="Host address to bind to")
+    parser.add_argument("--port", type=int, help="Port to bind to")
+    parser.add_argument(
+        "--environment",
+        type=str,
+        default="development",
+        choices=["development", "production"],
+        help="Environment configuration to use",
+    )
+
     args = parser.parse_args()
-    
+
     # Get configuration values
     host = args.host or app_config.monitoring.dashboard_host
     port = args.port or app_config.monitoring.dashboard_port
-    
+
     print("🌐 Starting PoUW Network Dashboard...")
     print(f"📊 Dashboard URL: http://{host}:{port}")
     print(f"🔗 API Docs: http://{host}:{port}/docs")
     print(f"🔧 Environment: {app_config.environment}")
     print()
-    
+
     # Configure uvicorn based on environment
     uvicorn_config = {
         "app": app,
         "host": host,
         "port": port,
-        "reload": app_config.environment == "development"
+        "reload": app_config.environment == "development",
     }
-    
+
     # Add production-specific settings
     if app_config.environment == "production":
-        uvicorn_config.update({
-            "workers": app_config.monitoring.dashboard_workers,
-            "access_log": app_config.monitoring.enable_access_logs
-        })
-    
+        uvicorn_config.update(
+            {
+                "workers": app_config.monitoring.dashboard_workers,
+                "access_log": app_config.monitoring.enable_access_logs,
+            }
+        )
+
     uvicorn.run(**uvicorn_config)

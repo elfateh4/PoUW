@@ -3,7 +3,7 @@ Security Module for PoUW Implementation.
 
 This module provides comprehensive security features organized into focused components:
 - Gradient poisoning protection (gradient_protection.py)
-- Byzantine fault tolerance (byzantine_tolerance.py)  
+- Byzantine fault tolerance (byzantine_tolerance.py)
 - Attack mitigation systems (attack_mitigation.py)
 - Behavioral anomaly detection (anomaly_detection.py)
 - Node authentication (authentication.py)
@@ -41,7 +41,7 @@ class SecurityAlert:
 
 # Import refactored security components
 from .gradient_protection import GradientPoisoningDetector
-from .byzantine_tolerance import ByzantineFaultTolerance  
+from .byzantine_tolerance import ByzantineFaultTolerance
 from .attack_mitigation import AttackMitigationSystem
 
 # Import advanced security features
@@ -51,7 +51,7 @@ try:
         SecurityEvent,
         SecurityLevel,
         AnomalyType,
-        NodeBehaviorProfile
+        NodeBehaviorProfile,
     )
     from .authentication import NodeAuthenticator
     from .intrusion_detection import NetworkIntrusionDetector
@@ -61,30 +61,27 @@ try:
         # Core security types
         "AttackType",
         "SecurityAlert",
-        
         # Basic security components
         "GradientPoisoningDetector",
-        "ByzantineFaultTolerance", 
+        "ByzantineFaultTolerance",
         "AttackMitigationSystem",
-        
         # Advanced security components (renamed from "enhanced")
         "BehavioralAnomalyDetector",  # was AdvancedAnomalyDetector
-        "NodeAuthenticator",          # was AdvancedAuthentication  
-        "NetworkIntrusionDetector",   # was IntrusionDetectionSystem
-        "ComprehensiveSecurityMonitor", # was SecurityMonitor
-        
+        "NodeAuthenticator",  # was AdvancedAuthentication
+        "NetworkIntrusionDetector",  # was IntrusionDetectionSystem
+        "ComprehensiveSecurityMonitor",  # was SecurityMonitor
         # Security event types
         "SecurityEvent",
-        "SecurityLevel", 
+        "SecurityLevel",
         "AnomalyType",
-        "NodeBehaviorProfile"
+        "NodeBehaviorProfile",
     ]
 
 except ImportError as e:
     # Fallback to basic security components only
     __all__ = [
         "AttackType",
-        "SecurityAlert", 
+        "SecurityAlert",
         "GradientPoisoningDetector",
         "ByzantineFaultTolerance",
         "AttackMitigationSystem",
@@ -95,18 +92,20 @@ except ImportError as e:
 try:
     # Provide aliases for old naming
     AdvancedAnomalyDetector = BehavioralAnomalyDetector
-    AdvancedAuthentication = NodeAuthenticator  
+    AdvancedAuthentication = NodeAuthenticator
     IntrusionDetectionSystem = NetworkIntrusionDetector
     SecurityMonitor = ComprehensiveSecurityMonitor
-    
+
     # Add aliases to exports
-    __all__.extend([
-        "AdvancedAnomalyDetector",
-        "AdvancedAuthentication", 
-        "IntrusionDetectionSystem",
-        "SecurityMonitor"
-    ])
-    
+    __all__.extend(
+        [
+            "AdvancedAnomalyDetector",
+            "AdvancedAuthentication",
+            "IntrusionDetectionSystem",
+            "SecurityMonitor",
+        ]
+    )
+
 except NameError:
     # Advanced components not available
     pass

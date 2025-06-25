@@ -120,7 +120,9 @@ class NetworkIntrusionDetector:
         # Check for rapid connection changes
         previous_connections = self._get_previous_connections(node_id)
         if previous_connections and len(previous_connections) > 0:
-            connection_change_rate = len(set(connections) - previous_connections) / max(len(previous_connections), 1)
+            connection_change_rate = len(set(connections) - previous_connections) / max(
+                len(previous_connections), 1
+            )
             if connection_change_rate > 0.8:  # 80% of connections changed
                 alert = SecurityAlert(
                     alert_type=AttackType.SYBIL_ATTACK,
@@ -151,8 +153,12 @@ class NetworkIntrusionDetector:
             submission_times = behavior_data.get("gradient_submission_times", {})
 
             if len(submission_times) >= 3:
-                times = [submission_times.get(node, 0) for node in participating_nodes if node in submission_times]
-                
+                times = [
+                    submission_times.get(node, 0)
+                    for node in participating_nodes
+                    if node in submission_times
+                ]
+
                 if len(times) >= 3:
                     time_variance = np.var(times)
 
@@ -177,7 +183,9 @@ class NetworkIntrusionDetector:
             voting_patterns = behavior_data.get("voting_patterns", {})
             if len(voting_patterns) >= 3:
                 # Analyze voting similarity
-                vote_similarity = self._calculate_voting_similarity(participating_nodes, voting_patterns)
+                vote_similarity = self._calculate_voting_similarity(
+                    participating_nodes, voting_patterns
+                )
                 if vote_similarity > 0.9:  # 90% voting similarity
                     alert = SecurityAlert(
                         alert_type=AttackType.BYZANTINE_FAULT,
@@ -196,16 +204,18 @@ class NetworkIntrusionDetector:
 
         return alerts
 
-    def detect_network_partitioning(self, network_topology: Dict[str, List[str]]) -> List[SecurityAlert]:
+    def detect_network_partitioning(
+        self, network_topology: Dict[str, List[str]]
+    ) -> List[SecurityAlert]:
         """Detect potential network partitioning attacks"""
         alerts = []
-        
+
         # Analyze network connectivity
         all_nodes = set(network_topology.keys())
         for node_id in all_nodes:
             connected_nodes = set(network_topology.get(node_id, []))
             isolation_ratio = 1.0 - (len(connected_nodes) / max(len(all_nodes) - 1, 1))
-            
+
             if isolation_ratio > 0.7:  # Node is isolated from 70% of network
                 alert = SecurityAlert(
                     alert_type=AttackType.DOS_ATTACK,
@@ -221,7 +231,7 @@ class NetworkIntrusionDetector:
                 )
                 alerts.append(alert)
                 self.alert_history.append(alert)
-        
+
         return alerts
 
     def update_attack_patterns(self, alert: SecurityAlert):
@@ -243,10 +253,12 @@ class NetworkIntrusionDetector:
         pattern["evidence_samples"].append(alert.evidence)
 
         # Track pattern evolution
-        pattern["pattern_evolution"].append({
-            "timestamp": alert.timestamp,
-            "confidence": alert.confidence,
-        })
+        pattern["pattern_evolution"].append(
+            {
+                "timestamp": alert.timestamp,
+                "confidence": alert.confidence,
+            }
+        )
 
         # Keep only recent evidence samples (last 10)
         if len(pattern["evidence_samples"]) > 10:
@@ -260,41 +272,45 @@ class NetworkIntrusionDetector:
         """Get comprehensive network security statistics"""
         current_time = time.time()
         recent_window = 3600  # 1 hour
-        
+
         recent_alerts = [
-            alert for alert in self.alert_history
-            if current_time - alert.timestamp <= recent_window
+            alert for alert in self.alert_history if current_time - alert.timestamp <= recent_window
         ]
-        
+
         stats = {
             "total_monitored_nodes": len(self.node_connections),
             "total_alerts": len(self.alert_history),
             "recent_alerts": len(recent_alerts),
             "attack_types_seen": len(set(alert.alert_type for alert in self.alert_history)),
             "known_attack_patterns": len(self.known_attack_patterns),
-            "average_connections_per_node": float(np.mean([len(conns) for conns in self.node_connections.values()])) if self.node_connections else 0,
+            "average_connections_per_node": (
+                float(np.mean([len(conns) for conns in self.node_connections.values()]))
+                if self.node_connections
+                else 0
+            ),
         }
-        
+
         # Alert breakdown by type
         alert_breakdown = {}
         for alert in recent_alerts:
             attack_type = alert.alert_type.value
             alert_breakdown[attack_type] = alert_breakdown.get(attack_type, 0) + 1
-        
+
         stats["recent_alert_breakdown"] = alert_breakdown
-        
+
         return stats
 
     def get_node_threat_level(self, node_id: str) -> str:
         """Get threat level assessment for a specific node"""
         node_alerts = [
-            alert for alert in self.alert_history
+            alert
+            for alert in self.alert_history
             if node_id in alert.node_id and time.time() - alert.timestamp <= 3600
         ]
-        
+
         if not node_alerts:
             return "LOW"
-        
+
         threat_score = 0
         for alert in node_alerts:
             if alert.alert_type == AttackType.DOS_ATTACK:
@@ -305,7 +321,7 @@ class NetworkIntrusionDetector:
                 threat_score += 3
             else:
                 threat_score += 1
-        
+
         if threat_score >= 10:
             return "CRITICAL"
         elif threat_score >= 5:
@@ -328,7 +344,7 @@ class NetworkIntrusionDetector:
                 "total_connections_seen": 0,
                 "last_update": time.time(),
             }
-        
+
         stats = self.network_statistics[node_id]
         stats["total_messages"] += message_count
         stats["total_connections_seen"] = max(stats["total_connections_seen"], connection_count)
@@ -339,11 +355,13 @@ class NetworkIntrusionDetector:
         # In a real implementation, this would track connection history
         return self.node_connections.get(node_id, set())
 
-    def _calculate_voting_similarity(self, nodes: List[str], voting_patterns: Dict[str, Any]) -> float:
+    def _calculate_voting_similarity(
+        self, nodes: List[str], voting_patterns: Dict[str, Any]
+    ) -> float:
         """Calculate voting similarity between nodes"""
         if len(nodes) < 2:
             return 0.0
-        
+
         similarities = []
         for i in range(len(nodes)):
             for j in range(i + 1, len(nodes)):
@@ -357,5 +375,5 @@ class NetworkIntrusionDetector:
                         total = max(len(pattern1), len(pattern2))
                         if total > 0:
                             similarities.append(matching / total)
-        
+
         return float(np.mean(similarities)) if similarities else 0.0

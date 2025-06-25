@@ -73,9 +73,7 @@ class NodeAuthenticator:
         credentials = self.node_credentials[node_id]
 
         # Verify signature (simplified - in production use proper cryptographic verification)
-        expected_signature = hmac.new(
-            credentials["public_key"], challenge, hashlib.sha256
-        ).digest()
+        expected_signature = hmac.new(credentials["public_key"], challenge, hashlib.sha256).digest()
 
         if hmac.compare_digest(signature, expected_signature):
             # Successful authentication
@@ -114,14 +112,11 @@ class NodeAuthenticator:
         # Check capabilities
         if node_id not in self.node_credentials:
             return False
-            
+
         credentials = self.node_credentials[node_id]
         required_capability = self._get_required_capability(action)
 
-        if (
-            required_capability
-            and required_capability not in credentials["capabilities"]
-        ):
+        if required_capability and required_capability not in credentials["capabilities"]:
             self._create_authentication_event(
                 node_id, "unauthorized_action_attempt", SecurityLevel.MEDIUM
             )
@@ -148,7 +143,7 @@ class NodeAuthenticator:
         """Get mapping of active session tokens to node IDs"""
         current_time = time.time()
         active = {}
-        
+
         # Clean up expired sessions while building result
         expired_tokens = []
         for token, session in self.active_sessions.items():
@@ -156,11 +151,11 @@ class NodeAuthenticator:
                 expired_tokens.append(token)
             else:
                 active[token] = session["node_id"]
-        
+
         # Remove expired sessions
         for token in expired_tokens:
             del self.active_sessions[token]
-        
+
         return active
 
     def get_authentication_statistics(self) -> Dict[str, Any]:
@@ -168,12 +163,15 @@ class NodeAuthenticator:
         current_time = time.time()
         stats = {
             "total_registered_nodes": len(self.node_credentials),
-            "active_sessions": len([s for s in self.active_sessions.values() 
-                                  if s["expires_at"] > current_time]),
-            "recent_auth_events": len([e for e in self.authentication_events 
-                                     if current_time - e.timestamp < 3600]),
-            "failed_authentications": sum(1 for cred in self.node_credentials.values() 
-                                        if cred["failed_attempts"] > 0),
+            "active_sessions": len(
+                [s for s in self.active_sessions.values() if s["expires_at"] > current_time]
+            ),
+            "recent_auth_events": len(
+                [e for e in self.authentication_events if current_time - e.timestamp < 3600]
+            ),
+            "failed_authentications": sum(
+                1 for cred in self.node_credentials.values() if cred["failed_attempts"] > 0
+            ),
         }
         return stats
 
@@ -220,14 +218,12 @@ class NodeAuthenticator:
         }
         return capability_map.get(action)
 
-    def _create_authentication_event(
-        self, node_id: str, event_type: str, severity: SecurityLevel
-    ):
+    def _create_authentication_event(self, node_id: str, event_type: str, severity: SecurityLevel):
         """Create authentication-related security event"""
         event = SecurityEvent(
-            event_id=hashlib.sha256(
-                f"{node_id}{event_type}{time.time()}".encode()
-            ).hexdigest()[:16],
+            event_id=hashlib.sha256(f"{node_id}{event_type}{time.time()}".encode()).hexdigest()[
+                :16
+            ],
             event_type=event_type,
             node_id=node_id,
             timestamp=int(time.time()),
@@ -242,13 +238,14 @@ class NodeAuthenticator:
         """Clean up expired sessions and return count of removed sessions"""
         current_time = time.time()
         expired_tokens = [
-            token for token, session in self.active_sessions.items()
+            token
+            for token, session in self.active_sessions.items()
             if session["expires_at"] < current_time
         ]
-        
+
         for token in expired_tokens:
             del self.active_sessions[token]
-        
+
         return len(expired_tokens)
 
     def reset_authentication_state(self) -> None:

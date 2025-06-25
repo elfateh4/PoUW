@@ -25,66 +25,92 @@ Key Components:
 # Core blockchain infrastructure
 from .blockchain import (
     # Core blockchain data structures
-    Transaction, PayForTaskTransaction, BuyTicketsTransaction,
-    PoUWBlockHeader, Block, MLTask, Blockchain,
-    
+    Transaction,
+    PayForTaskTransaction,
+    BuyTicketsTransaction,
+    PoUWBlockHeader,
+    Block,
+    MLTask,
+    Blockchain,
     # Standardized transaction format (research paper compliance)
-    StandardizedTransactionFormat, PoUWOpReturnData, PoUWOpCode,
-    create_standardized_pouw_transaction, parse_standardized_pouw_transaction
+    StandardizedTransactionFormat,
+    PoUWOpReturnData,
+    PoUWOpCode,
+    create_standardized_pouw_transaction,
+    parse_standardized_pouw_transaction,
 )
 
 # Revolutionary PoUW mining system
-from .mining import (
-    MiningProof, PoUWMiner, PoUWVerifier
-)
+from .mining import MiningProof, PoUWMiner, PoUWVerifier
 
 # Distributed machine learning system
-from .ml import (
-    MiniBatch, GradientUpdate, IterationMessage,
-    MLModel, SimpleMLP, DistributedTrainer
-)
+from .ml import MiniBatch, GradientUpdate, IterationMessage, MLModel, SimpleMLP, DistributedTrainer
 
 # Comprehensive economic system
 from .economics import (
     # Core staking and participation
-    NodeRole, Ticket, StakePool, StakingManager,
-    
+    NodeRole,
+    Ticket,
+    StakePool,
+    StakingManager,
     # Task assignment and rewards
-    TaskMatcher, RewardScheme, RewardDistributor,
-    
+    TaskMatcher,
+    RewardScheme,
+    RewardDistributor,
     # Market dynamics and pricing
-    DynamicPricingEngine, MarketCondition, MarketMetrics,
-    
+    DynamicPricingEngine,
+    MarketCondition,
+    MarketMetrics,
     # Main economic coordinator
-    EconomicSystem
+    EconomicSystem,
 )
 
 # Advanced networking infrastructure
 from .network import (
     # Core P2P communication
-    NetworkMessage, MessageHandler, BlockchainMessageHandler,
-    MLMessageHandler, P2PNode, MessageHistory,
-    
+    NetworkMessage,
+    MessageHandler,
+    BlockchainMessageHandler,
+    MLMessageHandler,
+    P2PNode,
+    MessageHistory,
     # Advanced network operations
-    NodeStatus, LeaderElectionState, NodeHealthMetrics, CrashRecoveryEvent,
-    LeaderElectionVote, CompressedMessageBatch, CrashRecoveryManager,
-    WorkerReplacementManager, LeaderElectionManager, MessageHistoryCompressor,
-    VPNMeshTopologyManager, NetworkOperationsManager
+    NodeStatus,
+    LeaderElectionState,
+    NodeHealthMetrics,
+    CrashRecoveryEvent,
+    LeaderElectionVote,
+    CompressedMessageBatch,
+    CrashRecoveryManager,
+    WorkerReplacementManager,
+    LeaderElectionManager,
+    MessageHistoryCompressor,
+    VPNMeshTopologyManager,
+    NetworkOperationsManager,
 )
 
 # Comprehensive security system
 try:
     from .security import (
         # Core security components (always available)
-        AttackType, SecurityAlert,
-        GradientPoisoningDetector, ByzantineFaultTolerance, AttackMitigationSystem
+        AttackType,
+        SecurityAlert,
+        GradientPoisoningDetector,
+        ByzantineFaultTolerance,
+        AttackMitigationSystem,
     )
+
     # Try to import advanced security features
     try:
         from .security import (
-            BehavioralAnomalyDetector, SecurityEvent, SecurityLevel, AnomalyType,
-            NodeAuthenticator, SecurityMonitor
+            BehavioralAnomalyDetector,
+            SecurityEvent,
+            SecurityLevel,
+            AnomalyType,
+            NodeAuthenticator,
+            SecurityMonitor,
         )
+
         ADVANCED_SECURITY_AVAILABLE = True
     except ImportError:
         ADVANCED_SECURITY_AVAILABLE = False
@@ -96,9 +122,10 @@ except ImportError:
     ByzantineFaultTolerance = None
     AttackMitigationSystem = None
 
-# Production and deployment features  
+# Production and deployment features
 try:
     from .production import PerformanceMonitor
+
     PRODUCTION_FEATURES_AVAILABLE = True
 except ImportError:
     # Production features not available
@@ -107,9 +134,8 @@ except ImportError:
 
 # Advanced cryptographic features
 try:
-    from .advanced import (
-        AdvancedWorkerSelection, ZeroNonceCommitment
-    )
+    from .advanced import AdvancedWorkerSelection, ZeroNonceCommitment
+
     ADVANCED_FEATURES_AVAILABLE = True
 except ImportError:
     # Advanced features not available
@@ -122,44 +148,72 @@ from .node import PoUWNode
 
 __all__ = [
     # Core blockchain
-    'Transaction', 'PayForTaskTransaction', 'BuyTicketsTransaction',
-    'PoUWBlockHeader', 'Block', 'MLTask', 'Blockchain',
-    'StandardizedTransactionFormat', 'PoUWOpReturnData', 'PoUWOpCode',
-    'create_standardized_pouw_transaction', 'parse_standardized_pouw_transaction',
-    
+    "Transaction",
+    "PayForTaskTransaction",
+    "BuyTicketsTransaction",
+    "PoUWBlockHeader",
+    "Block",
+    "MLTask",
+    "Blockchain",
+    "StandardizedTransactionFormat",
+    "PoUWOpReturnData",
+    "PoUWOpCode",
+    "create_standardized_pouw_transaction",
+    "parse_standardized_pouw_transaction",
     # Mining system
-    'MiningProof', 'PoUWMiner', 'PoUWVerifier',
-    
+    "MiningProof",
+    "PoUWMiner",
+    "PoUWVerifier",
     # ML system
-    'MiniBatch', 'GradientUpdate', 'IterationMessage',
-    'MLModel', 'SimpleMLP', 'DistributedTrainer',
-    
+    "MiniBatch",
+    "GradientUpdate",
+    "IterationMessage",
+    "MLModel",
+    "SimpleMLP",
+    "DistributedTrainer",
     # Economics
-    'NodeRole', 'Ticket', 'StakePool', 'StakingManager',
-    'TaskMatcher', 'RewardScheme', 'RewardDistributor',
-    'DynamicPricingEngine', 'MarketCondition', 'MarketMetrics',
-    'EconomicSystem',
-    
+    "NodeRole",
+    "Ticket",
+    "StakePool",
+    "StakingManager",
+    "TaskMatcher",
+    "RewardScheme",
+    "RewardDistributor",
+    "DynamicPricingEngine",
+    "MarketCondition",
+    "MarketMetrics",
+    "EconomicSystem",
     # Networking
-    'NetworkMessage', 'MessageHandler', 'BlockchainMessageHandler',
-    'MLMessageHandler', 'P2PNode', 'MessageHistory',
-    'NodeStatus', 'LeaderElectionState', 'NodeHealthMetrics', 'CrashRecoveryEvent',
-    'LeaderElectionVote', 'CompressedMessageBatch', 'CrashRecoveryManager',
-    'WorkerReplacementManager', 'LeaderElectionManager', 'MessageHistoryCompressor',
-    'VPNMeshTopologyManager', 'NetworkOperationsManager',
-    
+    "NetworkMessage",
+    "MessageHandler",
+    "BlockchainMessageHandler",
+    "MLMessageHandler",
+    "P2PNode",
+    "MessageHistory",
+    "NodeStatus",
+    "LeaderElectionState",
+    "NodeHealthMetrics",
+    "CrashRecoveryEvent",
+    "LeaderElectionVote",
+    "CompressedMessageBatch",
+    "CrashRecoveryManager",
+    "WorkerReplacementManager",
+    "LeaderElectionManager",
+    "MessageHistoryCompressor",
+    "VPNMeshTopologyManager",
+    "NetworkOperationsManager",
     # Main node
-    'PoUWNode'
+    "PoUWNode",
 ]
 
 # Version and metadata
-__version__ = '1.0.0'
-__author__ = 'PoUW Development Team'
-__description__ = 'Proof of Useful Work blockchain implementation'
-__url__ = 'https://github.com/your-org/pouw'
+__version__ = "1.0.0"
+__author__ = "PoUW Development Team"
+__description__ = "Proof of Useful Work blockchain implementation"
+__url__ = "https://github.com/your-org/pouw"
 
 # Production readiness indicators
-__status__ = 'Production'
-__compliance__ = '99.9% Research Paper Compliance'
-__security_level__ = 'Enterprise Grade'
-__performance__ = 'Optimized for Scale'
+__status__ = "Production"
+__compliance__ = "99.9% Research Paper Compliance"
+__security_level__ = "Enterprise Grade"
+__performance__ = "Optimized for Scale"

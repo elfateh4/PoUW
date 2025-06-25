@@ -53,6 +53,7 @@ logs/
 cache/
 data/MNIST/
 *.log
+OUTDATED/
 
 # Development files
 .env

@@ -15,16 +15,14 @@ from . import SecurityAlert, AttackType
 
 class ByzantineFaultTolerance:
     """Byzantine fault tolerance mechanisms for supervisor consensus"""
-    
+
     def __init__(self, supervisor_count: int = 5):
         self.supervisor_count = supervisor_count
         self.proposal_votes: Dict[str, Dict[str, bool]] = {}
         self.proposal_outcomes: Dict[str, str] = {}
         self.vote_history: Dict[str, List[Dict[str, Any]]] = {}
 
-    def submit_supervisor_vote(
-        self, proposal_id: str, supervisor_id: str, vote: bool
-    ) -> bool:
+    def submit_supervisor_vote(self, proposal_id: str, supervisor_id: str, vote: bool) -> bool:
         """Submit supervisor vote and check for consensus"""
         if proposal_id not in self.proposal_votes:
             self.proposal_votes[proposal_id] = {}
@@ -51,28 +49,28 @@ class ByzantineFaultTolerance:
             elif (total_votes - yes_votes) > (2 * total_votes // 3):
                 self.proposal_outcomes[proposal_id] = "rejected"
                 return True
-        
+
         return False
-    
+
     def get_proposal_outcome(self, proposal_id: str) -> Optional[str]:
         """Get the outcome of a proposal"""
         return self.proposal_outcomes.get(proposal_id)
-    
+
     def get_proposal_votes(self, proposal_id: str) -> Dict[str, bool]:
         """Get all votes for a specific proposal"""
         return self.proposal_votes.get(proposal_id, {}).copy()
-    
+
     def detect_byzantine_supervisors(
         self, proposal_history: Dict[str, Dict[str, Any]]
     ) -> List[SecurityAlert]:
         """Detect Byzantine supervisors based on voting patterns"""
         alerts = []
         supervisor_stats = {}
-        
+
         # Analyze voting patterns
         for proposal_id, votes in proposal_history.items():
             outcome = self.proposal_outcomes.get(proposal_id, "unknown")
-            
+
             for supervisor_id, vote_data in votes.items():
                 if supervisor_id not in supervisor_stats:
                     supervisor_stats[supervisor_id] = {
@@ -107,13 +105,13 @@ class ByzantineFaultTolerance:
                         description=f"Byzantine supervisor detected: {supervisor_id}",
                     )
                     alerts.append(alert)
-        
+
         return alerts
 
     def get_supervisor_statistics(self) -> Dict[str, Dict[str, Any]]:
         """Get voting statistics for all supervisors"""
         stats = {}
-        
+
         for supervisor_id, history in self.vote_history.items():
             total_votes = len(history)
             if total_votes > 0:
@@ -122,9 +120,9 @@ class ByzantineFaultTolerance:
                     "total_votes": total_votes,
                     "recent_activity": len(recent_votes),
                     "last_vote_time": history[-1]["timestamp"] if history else None,
-                    "participation_rate": total_votes / max(len(self.proposal_outcomes), 1)
+                    "participation_rate": total_votes / max(len(self.proposal_outcomes), 1),
                 }
-        
+
         return stats
 
     def reset_consensus_state(self) -> None:

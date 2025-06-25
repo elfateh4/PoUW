@@ -3,7 +3,7 @@ Refactored Economics Module for PoUW.
 
 This package provides a clear, modular economic system with focused components:
 - Staking system for network participation
-- Dynamic pricing based on market conditions  
+- Dynamic pricing based on market conditions
 - Reward distribution and incentive mechanisms
 - Task-worker matching algorithms
 - Profitability analysis and network economics
@@ -26,17 +26,19 @@ from .economic_system import EconomicSystem
 
 __all__ = [
     # Staking system
-    'NodeRole', 'Ticket', 'StakePool', 'StakingManager',
-    
+    "NodeRole",
+    "Ticket",
+    "StakePool",
+    "StakingManager",
     # Task matching
-    'TaskMatcher',
-    
+    "TaskMatcher",
     # Rewards
-    'RewardScheme', 'RewardDistributor',
-    
+    "RewardScheme",
+    "RewardDistributor",
     # Market and pricing
-    'DynamicPricingEngine', 'MarketCondition', 'MarketMetrics',
-    
+    "DynamicPricingEngine",
+    "MarketCondition",
+    "MarketMetrics",
     # Main economic system
-    'EconomicSystem'
+    "EconomicSystem",
 ]
