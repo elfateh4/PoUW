@@ -1,0 +1,186 @@
+name: Deploy to Hostinger VPS
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run linting
+        run: |
+          pip install black pylint mypy
+          black --check --line-length=100 .
+          # pylint pouw/ || true  # Continue on pylint warnings
+          # mypy pouw/ || true    # Continue on mypy warnings
+
+      - name: Run tests
+        run: |
+          pip install pytest pytest-cov
+          python -m pytest tests/ -v --tb=short --cov=pouw --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Hostinger VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            # Navigate to application directory
+            cd /opt/pouw || { echo "Directory /opt/pouw not found. Creating..."; sudo mkdir -p /opt/pouw; cd /opt/pouw; }
+
+            # Stop existing containers
+            sudo docker-compose -f docker-compose.production.yml down || true
+
+            # Pull latest changes
+            if [ -d ".git" ]; then
+              git pull origin main
+            else
+              git clone https://github.com/${{ github.repository }}.git .
+            fi
+
+            # Log in to GitHub Container Registry
+            echo ${{ secrets.GITHUB_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Pull latest image
+            sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+            # Start services
+            sudo docker-compose -f docker-compose.production.yml up -d
+
+            # Clean up old images
+            sudo docker image prune -f
+
+            # Show status
+            sudo docker-compose -f docker-compose.production.yml ps
+
+  health-check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Wait for deployment
+        run: sleep 60
+
+      - name: Health check
+        run: |
+          # Replace with your actual domain/IP
+          HEALTH_URL="http://${{ secrets.VPS_HOST }}/health"
+
+          for i in {1..5}; do
+            if curl -f $HEALTH_URL; then
+              echo "Health check passed!"
+              exit 0
+            else
+              echo "Health check attempt $i failed. Retrying..."
+              sleep 30
+            fi
+          done
+
+          echo "Health check failed after 5 attempts"
+          exit 1
+
+  notify:
+    needs: [deploy, health-check]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment to Hostinger VPS: ${{ job.status }}
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

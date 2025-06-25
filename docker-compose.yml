@@ -1,226 +1,130 @@
 version: '3.8'
 
 services:
-  # PoUW Blockchain Node
-  pouw-blockchain:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: pouw/blockchain:latest
-    container_name: pouw-blockchain
+  # Supervisor node
+  supervisor:
+    build: .
+    container_name: pouw-supervisor
+    command: ["python", "main.py", "--role", "SUPERVISOR", "--port", "8000", "--node-id", "supervisor_001"]
     ports:
-      - "8545:8545"  # RPC
-      - "8546:8546"  # WebSocket
-      - "30303:30303" # P2P
-    environment:
-      - POUW_ROLE=miner
-      - POUW_NETWORK_ID=1337
-      - POUW_LOG_LEVEL=info
-      - POUW_DATA_DIR=/data
+      - "8000:8000"
     volumes:
-      - blockchain_data:/data
-      - ./logs:/logs
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./cache:/app/cache
+    environment:
+      - NODE_ROLE=SUPERVISOR
+      - NODE_ID=supervisor_001
+      - PORT=8000
+      - LOG_LEVEL=INFO
     networks:
       - pouw-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8545/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
 
-  # PoUW ML Trainer
-  pouw-ml-trainer:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: pouw/ml-trainer:latest
-    container_name: pouw-ml-trainer
+  # Miner node 1
+  miner1:
+    build: .
+    container_name: pouw-miner1
+    command: ["python", "main.py", "--role", "MINER", "--port", "8001", "--node-id", "miner_001", "--stake", "100.0"]
     ports:
-      - "8080:8080"
-    environment:
-      - POUW_ROLE=ml-trainer
-      - POUW_GPU_ENABLED=false
-      - POUW_TRAINING_MODE=distributed
-      - POUW_MODELS_DIR=/models
+      - "8001:8001"
     volumes:
-      - ml_models:/models
-      - ./logs:/logs
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./cache:/app/cache
+    environment:
+      - NODE_ROLE=MINER
+      - NODE_ID=miner_001
+      - PORT=8001
+      - STAKE=100.0
+      - SUPERVISOR_ADDRESS=supervisor:8000
+      - LOG_LEVEL=INFO
     networks:
       - pouw-network
-    restart: unless-stopped
     depends_on:
-      - pouw-blockchain
+      - supervisor
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 90s
 
-  # PoUW VPN Mesh
-  pouw-vpn-mesh:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: pouw/vpn-mesh:latest
-    container_name: pouw-vpn-mesh
+  # Miner node 2
+  miner2:
+    build: .
+    container_name: pouw-miner2
+    command: ["python", "main.py", "--role", "MINER", "--port", "8002", "--node-id", "miner_002", "--stake", "150.0"]
     ports:
-      - "1194:1194/udp"  # OpenVPN
-      - "8081:8081"      # Management API
+      - "8002:8002"
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./cache:/app/cache
     environment:
-      - POUW_ROLE=vpn-mesh
-      - POUW_VPN_MODE=mesh
-      - POUW_ENCRYPTION=aes-256-cbc
-    volumes:
-      - vpn_config:/etc/openvpn
-      - ./logs:/logs
+      - NODE_ROLE=MINER
+      - NODE_ID=miner_002
+      - PORT=8002
+      - STAKE=150.0
+      - SUPERVISOR_ADDRESS=supervisor:8000
+      - LOG_LEVEL=INFO
     networks:
       - pouw-network
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: pouw-postgres
-    environment:
-      - POSTGRES_DB=pouw
-      - POSTGRES_USER=pouw
-      - POSTGRES_PASSWORD=pouw_secure_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - pouw-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pouw"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: pouw-redis
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    networks:
-      - pouw-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Prometheus Monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: pouw-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=30d'
-      - '--web.enable-lifecycle'
-    networks:
-      - pouw-network
-    restart: unless-stopped
-
-  # Grafana Dashboard
-  grafana:
-    image: grafana/grafana:latest
-    container_name: pouw-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-    networks:
-      - pouw-network
-    restart: unless-stopped
     depends_on:
-      - prometheus
+      - supervisor
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # NGINX Load Balancer
-  nginx-lb:
+  # Verifier node
+  verifier:
+    build: .
+    container_name: pouw-verifier
+    command: ["python", "main.py", "--role", "VERIFIER", "--port", "8003", "--node-id", "verifier_001"]
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./cache:/app/cache
+    environment:
+      - NODE_ROLE=VERIFIER
+      - NODE_ID=verifier_001
+      - PORT=8003
+      - SUPERVISOR_ADDRESS=supervisor:8000
+      - LOG_LEVEL=INFO
+    networks:
+      - pouw-network
+    depends_on:
+      - supervisor
+    restart: unless-stopped
+
+  # Load balancer/reverse proxy
+  nginx:
     image: nginx:alpine
-    container_name: pouw-nginx-lb
+    container_name: pouw-nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
     networks:
       - pouw-network
-    restart: unless-stopped
     depends_on:
-      - pouw-blockchain
-      - pouw-ml-trainer
-
-  # Log Aggregator (ELK Stack - Elasticsearch)
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: pouw-elasticsearch
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    networks:
-      - pouw-network
+      - supervisor
+      - miner1
+      - miner2
+      - verifier
     restart: unless-stopped
-
-  # Kibana Dashboard
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
-    container_name: pouw-kibana
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    networks:
-      - pouw-network
-    restart: unless-stopped
-    depends_on:
-      - elasticsearch
-
-  # Logstash
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.11.0
-    container_name: pouw-logstash
-    volumes:
-      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline
-      - ./logs:/logs:ro
-    networks:
-      - pouw-network
-    restart: unless-stopped
-    depends_on:
-      - elasticsearch
 
 networks:
   pouw-network:
@@ -230,19 +134,6 @@ networks:
         - subnet: 172.20.0.0/16
 
 volumes:
-  blockchain_data:
-    driver: local
-  ml_models:
-    driver: local
-  vpn_config:
-    driver: local
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
-  elasticsearch_data:
-    driver: local
+  pouw-logs:
+  pouw-data:
+  pouw-cache:
