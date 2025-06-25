@@ -5,6 +5,9 @@ Test configuration and fixtures for PoUW tests.
 import pytest
 import torch
 import numpy as np
+import tempfile
+import shutil
+from pathlib import Path
 from pouw.blockchain import Blockchain, MLTask
 from pouw.ml import SimpleMLP, DistributedTrainer, MiniBatch
 from pouw.mining import PoUWMiner, PoUWVerifier
@@ -180,3 +183,47 @@ class TestHelpers:
         if "accuracy" in metrics:
             assert isinstance(metrics["accuracy"], (int, float))
             assert 0 <= metrics["accuracy"] <= 1
+
+
+@pytest.fixture
+def temp_project_dir():
+    """Create a temporary project directory for testing"""
+    temp_dir = tempfile.mkdtemp()
+
+    # Create basic project structure
+    project_path = Path(temp_dir)
+
+    # Create basic files that tests expect
+    (project_path / "Dockerfile").write_text(
+        """
+FROM python:3.11
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["python", "main.py"]
+"""
+    )
+
+    (project_path / "requirements.txt").write_text(
+        """
+pytest
+numpy
+torch
+"""
+    )
+
+    (project_path / "main.py").write_text(
+        """
+print("Hello from PoUW")
+"""
+    )
+
+    # Create tests directory
+    (project_path / "tests").mkdir()
+    (project_path / "tests" / "__init__.py").write_text("")
+
+    yield str(project_path)
+
+    # Cleanup
+    shutil.rmtree(temp_dir, ignore_errors=True)

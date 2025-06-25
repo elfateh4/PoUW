@@ -440,6 +440,22 @@ class GitHubActionsManager:
             permissions={"contents": "write", "packages": "write"},
         )
 
+    async def generate_workflow(self, workflow: WorkflowConfiguration) -> str:
+        """Generate YAML workflow content as string"""
+        workflow_dict = workflow.to_dict()
+        
+        # Generate YAML and do some post-processing to fix formatting
+        yaml_content = yaml.dump(workflow_dict, default_flow_style=False, sort_keys=False)
+        
+        # Fix the 'on' key issue
+        yaml_content = yaml_content.replace("'on':", "on:")
+        
+        # Fix the quotes around string values in 'with' sections
+        import re
+        yaml_content = re.sub(r"python-version: '([^']+)'", r'python-version: "\1"', yaml_content)
+        
+        return yaml_content
+
     def generate_workflow_file(self, workflow: WorkflowConfiguration, filename: str) -> Path:
         """Generate YAML workflow file"""
         workflow_file = self.workflows_dir / f"{filename}.yml"

@@ -49,12 +49,23 @@ class PipelineStage:
     """Jenkins pipeline stage configuration"""
 
     name: str
-    steps: List[str]
+    steps: Optional[List[str]] = None
     when_condition: Optional[str] = None
     parallel_stages: Optional[Dict[str, "PipelineStage"]] = None
     agent: Optional[str] = None
     environment: Optional[Dict[str, str]] = None
     post_actions: Optional[Dict[str, List[str]]] = None
+
+    def __post_init__(self):
+        """Validate that either steps or parallel_stages is provided"""
+        if not self.steps and not self.parallel_stages:
+            raise ValueError("Either 'steps' or 'parallel_stages' must be provided")
+        if self.steps and self.parallel_stages:
+            raise ValueError("Cannot specify both 'steps' and 'parallel_stages'")
+        
+        # If steps is None, set it to empty list for compatibility
+        if self.steps is None:
+            self.steps = []
 
     def to_groovy(self, indent: int = 0) -> str:
         """Convert stage to Groovy pipeline syntax"""
@@ -84,7 +95,7 @@ class PipelineStage:
             for stage_name, stage in self.parallel_stages.items():
                 groovy += stage.to_groovy(indent + 2)
             groovy += f"{ind}    }}\n"
-        else:
+        elif self.steps:
             # Steps
             groovy += f"{ind}    steps {{\n"
             for step in self.steps:
