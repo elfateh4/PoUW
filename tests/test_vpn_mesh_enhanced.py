@@ -65,23 +65,27 @@ class TestProductionVPNMeshManager(unittest.TestCase):
         )
         self.assertIsNotNone(manager_generic.node_private_key)
         self.assertIsNotNone(manager_generic.node_public_key)
-        self.assertEqual(len(manager_generic.node_private_key), 32)
-        self.assertEqual(len(manager_generic.node_public_key), 32)
+        if manager_generic.node_private_key is not None:
+            self.assertEqual(len(manager_generic.node_private_key), 32)
+        if manager_generic.node_public_key is not None:
+            self.assertEqual(len(manager_generic.node_public_key), 32)
 
     @patch("pouw.network.vpn_mesh_enhanced.ProductionVPNMeshManager._request_virtual_ip")
     @patch("pouw.network.vpn_mesh_enhanced.ProductionVPNMeshManager._get_local_ip")
     @patch("pouw.network.vpn_mesh_enhanced.ProductionVPNMeshManager._create_network_interface")
-    async def test_join_mesh_network(self, mock_create_interface, mock_get_ip, mock_request_ip):
+    def test_join_mesh_network(self, mock_create_interface, mock_get_ip, mock_request_ip):
         """Test joining mesh network"""
         # Setup mocks
         mock_request_ip.return_value = "10.200.1.10"
         mock_get_ip.return_value = "192.168.1.100"
         mock_create_interface.return_value = True
 
-        # Test joining mesh
-        result = await self.manager.join_mesh_network("coordinator:8080")
-
-        self.assertTrue(result)
+        # Test joining mesh (run async function)
+        async def async_test():
+            result = await self.manager.join_mesh_network("coordinator:8080")
+            self.assertTrue(result)
+        
+        asyncio.run(async_test())
         self.assertIn(self.manager.node_id, self.manager.mesh_nodes)
         self.assertEqual(self.manager.mesh_nodes[self.manager.node_id].virtual_ip, "10.200.1.10")
 
@@ -99,7 +103,7 @@ class TestProductionVPNMeshManager(unittest.TestCase):
         self.assertEqual(len(key1), 32)
 
     @patch("pouw.network.vpn_mesh_enhanced.ProductionVPNMeshManager._establish_tunnel")
-    async def test_establish_tunnel_to_peer(self, mock_establish):
+    def test_establish_tunnel_to_peer(self, mock_establish):
         """Test tunnel establishment to peer"""
         # Setup manager with a mesh node
         self.manager.mesh_nodes[self.manager.node_id] = MeshNode(
@@ -118,12 +122,14 @@ class TestProductionVPNMeshManager(unittest.TestCase):
             "public_key": b"mock_public_key",
         }
 
-        result = await self.manager.establish_tunnel_to_peer("peer_001", peer_info)
-
-        self.assertTrue(result)
-        tunnel_id = f"{self.manager.node_id}_peer_001"
-        self.assertIn(tunnel_id, self.manager.tunnels)
-        self.assertEqual(self.manager.tunnels[tunnel_id].state, TunnelState.CONNECTED)
+        async def async_test():
+            result = await self.manager.establish_tunnel_to_peer("peer_001", peer_info)
+            self.assertTrue(result)
+            tunnel_id = f"{self.manager.node_id}_peer_001"
+            self.assertIn(tunnel_id, self.manager.tunnels)
+            self.assertEqual(self.manager.tunnels[tunnel_id].state, TunnelState.CONNECTED)
+        
+        asyncio.run(async_test())
 
     def test_get_mesh_status(self):
         """Test mesh status reporting"""
@@ -382,38 +388,41 @@ class TestIntegration(unittest.TestCase):
             if hasattr(manager, "shutdown_event"):
                 manager.shutdown_event.set()
 
-    async def test_full_mesh_setup(self):
+    def test_full_mesh_setup(self):
         """Test full mesh network setup"""
-        # Create multiple managers
-        for i in range(3):
-            manager = ProductionVPNMeshManager(
-                node_id=f"node_{i:03d}",
-                network_cidr="10.150.0.0/16",
-                preferred_protocol=VPNProtocol.WIREGUARD,
-                base_port=60000 + i,
-            )
-            self.managers.append(manager)
+        async def async_test():
+            # Create multiple managers
+            for i in range(3):
+                manager = ProductionVPNMeshManager(
+                    node_id=f"node_{i:03d}",
+                    network_cidr="10.150.0.0/16",
+                    preferred_protocol=VPNProtocol.WIREGUARD,
+                    base_port=60000 + i,
+                )
+                self.managers.append(manager)
 
-        # Register all nodes with coordinator
-        for i, manager in enumerate(self.managers):
-            node_info = {
-                "node_id": manager.node_id,
-                "physical_ip": f"192.168.1.{200+i}",
-                "port": 60000 + i,
-                "public_key": manager.node_public_key,
-                "role": "worker",
-            }
+            # Register all nodes with coordinator
+            for i, manager in enumerate(self.managers):
+                node_info = {
+                    "node_id": manager.node_id,
+                    "physical_ip": f"192.168.1.{200+i}",
+                    "port": 60000 + i,
+                    "public_key": manager.node_public_key,
+                    "role": "worker",
+                }
 
-            virtual_ip = self.coordinator.register_node(node_info)
-            self.assertIsNotNone(virtual_ip)
+                virtual_ip = self.coordinator.register_node(node_info)
+                self.assertIsNotNone(virtual_ip)
 
-        # Verify topology
-        topology = self.coordinator.get_mesh_topology()
-        self.assertEqual(topology["total_nodes"], 3)
+            # Verify topology
+            topology = self.coordinator.get_mesh_topology()
+            self.assertEqual(topology["total_nodes"], 3)
 
-        # Test optimization
-        optimized = self.coordinator.optimize_topology()
-        self.assertEqual(len(optimized), 3)
+            # Test optimization
+            optimized = self.coordinator.optimize_topology()
+            self.assertEqual(len(optimized), 3)
+
+        asyncio.run(async_test())
 
 
 def run_async_test(test_func):
@@ -423,16 +432,6 @@ def run_async_test(test_func):
         asyncio.run(test_func(self))
 
     return wrapper
-
-
-# Apply async wrapper to async test methods
-TestProductionVPNMeshManager.test_join_mesh_network = run_async_test(
-    TestProductionVPNMeshManager.test_join_mesh_network
-)
-TestProductionVPNMeshManager.test_establish_tunnel_to_peer = run_async_test(
-    TestProductionVPNMeshManager.test_establish_tunnel_to_peer
-)
-TestIntegration.test_full_mesh_setup = run_async_test(TestIntegration.test_full_mesh_setup)
 
 
 if __name__ == "__main__":

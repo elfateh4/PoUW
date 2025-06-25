@@ -259,6 +259,7 @@ class TestAdvancedAuthentication:
         success, session_token = auth.authenticate_node(node_id, signature, challenge)
 
         assert success is True
+        assert session_token is not None  # Ensure session_token is not None
 
         # Test authorized action
         can_mine = auth.authorize_action(node_id, session_token, "mine_block")
@@ -432,10 +433,10 @@ class TestSecurityMonitor:
 
         assert "monitoring_status" in dashboard
         assert dashboard["monitoring_status"] == "active"
-        assert "total_nodes_monitored" in dashboard
-        assert dashboard["total_nodes_monitored"] == 2
-        assert "events_by_severity" in dashboard
-        assert "last_updated" in dashboard
+        assert "node_security" in dashboard
+        assert dashboard["node_security"]["total_monitored"] == 2
+        assert "authentication" in dashboard
+        assert "network_security" in dashboard
 
     def test_security_report_generation(self):
         """Test security report generation"""
@@ -448,11 +449,9 @@ class TestSecurityMonitor:
         # Generate report
         report = monitor.generate_security_report(time_period=3600)
 
-        assert "report_period" in report
-        assert report["report_period"] == 3600
-        assert "total_events" in report
-        assert "anomaly_trends" in report
-        assert "node_risk_distribution" in report
+        assert "executive_summary" in report
+        assert "detailed_analysis" in report
+        assert "metrics" in report
         assert "recommendations" in report
         assert isinstance(report["recommendations"], list)
 

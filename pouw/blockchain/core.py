@@ -212,6 +212,30 @@ class MLTask:
 
         return min(1.0, score)  # Cap at 1.0
 
+    def get_required_miners(self) -> int:
+        """Calculate number of miners required based on task complexity"""
+        # Base requirement of 1 miner
+        required_miners = 1
+        
+        # Scale with complexity score
+        complexity = self.complexity_score
+        if complexity > 0.8:
+            required_miners = 3
+        elif complexity > 0.6:
+            required_miners = 2
+        
+        # Consider dataset size
+        if "size" in self.dataset_info:
+            size = self.dataset_info["size"]
+            if size > 100000:  # Large dataset
+                required_miners += 1
+        
+        # Consider performance requirements
+        if "gpu" in self.performance_requirements and self.performance_requirements["gpu"]:
+            required_miners = max(required_miners, 2)  # GPU tasks need at least 2 miners
+            
+        return min(required_miners, 5)  # Cap at 5 miners
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert MLTask to dictionary representation"""
         return {
