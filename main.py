@@ -12,8 +12,14 @@ import sys
 import signal
 import logging
 import argparse
+import time
 from typing import Optional
 from pathlib import Path
+
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None
 import json
 from datetime import datetime
 
@@ -23,15 +29,25 @@ sys.path.insert(0, str(project_root))
 
 from pouw.node import PoUWNode, NodeConfig
 from pouw.economics import NodeRole
+from config import get_config_manager, get_config, get_node_config, get_monitoring_config
 
 # Simple HTTP server for health checks
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
+# Initialize configuration
+config_manager = get_config_manager()
+app_config = get_config()
+
 # Configure logging
+log_level = getattr(logging, app_config.monitoring.log_level.upper(), logging.INFO)
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=log_level,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(app_config.monitoring.log_file) if app_config.monitoring.log_file else logging.NullHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -116,11 +132,18 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 class PoUWApplication:
     """Main PoUW application controller"""
     
-    def __init__(self):
+    def __init__(self, environment: Optional[str] = None):
+        # Load configuration
+        self.config_manager = get_config_manager(environment=environment)
+        self.config = self.config_manager.get_config()
+        
         self.node: Optional[PoUWNode] = None
         self.running = False
         self.health_server: Optional[HTTPServer] = None
         self.health_thread: Optional[threading.Thread] = None
+        self.dashboard_url = self.config.monitoring.dashboard_url
+        
+        logger.info(f"Initialized PoUW Application in {self.config.environment} mode")
         
     def parse_node_role(self, role_str: str) -> NodeRole:
         """Parse node role from string"""
@@ -155,24 +178,22 @@ class PoUWApplication:
     def create_node_config(self, args) -> NodeConfig:
         """Create node configuration from arguments and environment"""
         
-        # Get configuration from environment variables or arguments
-        node_id = args.node_id or os.getenv('POUW_NODE_ID', f'node_{args.role.lower()}_{os.getpid()}')
-        host = args.host or os.getenv('POUW_HOST', '0.0.0.0')
-        port = args.port or int(os.getenv('POUW_PORT', '8000'))
-        stake_amount = args.stake or float(os.getenv('POUW_STAKE_AMOUNT', '100.0'))
-        max_peers = args.max_peers or int(os.getenv('POUW_MAX_PEERS', '50'))
+        # Get base configuration from config system
+        base_config = self.config.node
+        
+        # Override with command line arguments if provided
+        node_id = args.node_id or base_config.node_id
+        host = args.host or base_config.host
+        port = args.port or base_config.port
+        stake_amount = args.stake or base_config.initial_stake
+        max_peers = args.max_peers or base_config.max_peers
         
         # Parse bootstrap peers
-        bootstrap_peers_str = args.bootstrap_peers or os.getenv('POUW_BOOTSTRAP_PEERS', '')
+        bootstrap_peers_str = args.bootstrap_peers or base_config.bootstrap_peers
         bootstrap_peers = self.parse_bootstrap_peers(bootstrap_peers_str)
         
-        # Feature flags
-        enable_security = args.enable_security or os.getenv('POUW_ENABLE_SECURITY', 'true').lower() == 'true'
-        enable_production = args.enable_production or os.getenv('POUW_ENABLE_PRODUCTION_FEATURES', 'false').lower() == 'true'
-        enable_advanced = args.enable_advanced or os.getenv('POUW_ENABLE_ADVANCED_FEATURES', 'false').lower() == 'true'
-        
-        # Mining configuration
-        omega_b = float(os.getenv('POUW_MINING_INTENSITY', '0.00001'))
+        # Get security configuration
+        security_config = self.config.security
         
         return NodeConfig(
             node_id=node_id,
@@ -180,12 +201,13 @@ class PoUWApplication:
             host=host,
             port=port,
             initial_stake=stake_amount,
-            omega_b=omega_b,
+            omega_b=base_config.mining_intensity,
             max_peers=max_peers,
             bootstrap_peers=bootstrap_peers,
-            enable_security_monitoring=enable_security,
-            enable_production_features=enable_production,
-            enable_advanced_features=enable_advanced
+            enable_security_monitoring=security_config.enable_security,
+            enable_attack_mitigation=security_config.enable_attack_mitigation,
+            enable_production_features=security_config.enable_production_features,
+            enable_advanced_features=security_config.enable_advanced_features
         )
     
     async def start_node(self, config: NodeConfig):
@@ -260,6 +282,9 @@ class PoUWApplication:
                     logger.info(f"Node status - Height: {status.get('blockchain_height', 0)}, "
                                f"Peers: {status.get('peer_count', 0)}, "
                                f"Training: {status.get('is_training', False)}")
+                    
+                    # Report to dashboard if available
+                    await self.report_to_dashboard()
                 
                 await asyncio.sleep(60)  # Status update every minute
                 
@@ -268,6 +293,8 @@ class PoUWApplication:
         except Exception as e:
             logger.error(f"Error during node operation: {e}")
             raise
+    
+
     
     async def stop_node(self):
         """Stop the PoUW node"""
@@ -286,11 +313,15 @@ class PoUWApplication:
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
     
-    def start_health_server(self, host='0.0.0.0', port=8080):
+    def start_health_server(self, host=None, port=None):
         """Start the health check HTTP server"""
         if self.health_server:
             logger.warning("Health server is already running")
             return
+        
+        # Use configuration defaults if not provided
+        host = host or self.config.monitoring.dashboard_host
+        port = port or self.config.monitoring.health_check_port
         
         # Create a handler class that includes the app instance
         class AppHealthHandler(HealthCheckHandler):
@@ -324,6 +355,39 @@ class PoUWApplication:
             self.health_server.server_close()
             self.health_server = None
             logger.info("Health server stopped")
+    
+    async def report_to_dashboard(self):
+        """Report node status to dashboard"""
+        if not self.node or not aiohttp:
+            return
+            
+        try:
+            status = self.node.get_status()
+            node_data = {
+                "node_id": self.node.node_id,
+                "role": self.node.role.value,
+                "host": self.node.host,
+                "port": self.node.port,
+                "peer_count": status.get("peer_count", 0),
+                "stake": getattr(self.node.config, 'initial_stake', 0) if hasattr(self.node, 'config') else 0,
+                "uptime": time.time() - (self.node.start_time or time.time()),
+                "is_running": status.get("is_running", False),
+                "blockchain_height": status.get("blockchain_height", 0),
+                "is_training": status.get("is_training", False)
+            }
+            
+            # Use aiohttp with proper type checking
+            ClientSession = aiohttp.ClientSession
+            ClientTimeout = aiohttp.ClientTimeout
+            
+            async with ClientSession() as session:
+                url = f"{self.dashboard_url}/api/nodes/{self.node.node_id}/update"
+                await session.post(url, json=node_data, timeout=ClientTimeout(total=5))
+                
+        except Exception as e:
+            # Don't log dashboard errors too verbosely to avoid spam
+            pass
+            pass
 
 
 async def main():

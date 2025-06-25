@@ -5,23 +5,27 @@ services:
   supervisor:
     build: .
     container_name: pouw-supervisor
-    command: ["python", "main.py", "--role", "SUPERVISOR", "--port", "8000", "--node-id", "supervisor_001"]
+    command: ["python", "main.py", "--role", "${POUW_SUPERVISOR_ROLE:-SUPERVISOR}", "--port", "${POUW_SUPERVISOR_PORT:-8000}", "--node-id", "${POUW_SUPERVISOR_ID:-supervisor_001}"]
     ports:
-      - "8000:8000"
+      - "${POUW_SUPERVISOR_PORT:-8000}:${POUW_SUPERVISOR_PORT:-8000}"
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
       - ./cache:/app/cache
+      - ./config:/app/config:ro
+      - ./.env.development:/app/.env.development:ro
     environment:
-      - NODE_ROLE=SUPERVISOR
-      - NODE_ID=supervisor_001
-      - PORT=8000
-      - LOG_LEVEL=INFO
+      - NODE_ROLE=${POUW_SUPERVISOR_ROLE:-SUPERVISOR}
+      - NODE_ID=${POUW_SUPERVISOR_ID:-supervisor_001}
+      - PORT=${POUW_SUPERVISOR_PORT:-8000}
+      - LOG_LEVEL=${POUW_LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${POUW_ENVIRONMENT:-development}
+      - PYTHONUNBUFFERED=1
     networks:
       - pouw-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${POUW_SUPERVISOR_PORT:-8000}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -30,27 +34,31 @@ services:
   miner1:
     build: .
     container_name: pouw-miner1
-    command: ["python", "main.py", "--role", "MINER", "--port", "8001", "--node-id", "miner_001", "--stake", "100.0"]
+    command: ["python", "main.py", "--role", "${POUW_MINER1_ROLE:-MINER}", "--port", "${POUW_MINER1_PORT:-8001}", "--node-id", "${POUW_MINER1_ID:-miner_001}", "--stake", "${POUW_MINER1_STAKE:-100.0}"]
     ports:
-      - "8001:8001"
+      - "${POUW_MINER1_PORT:-8001}:${POUW_MINER1_PORT:-8001}"
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
       - ./cache:/app/cache
+      - ./config:/app/config:ro
+      - ./.env.development:/app/.env.development:ro
     environment:
-      - NODE_ROLE=MINER
-      - NODE_ID=miner_001
-      - PORT=8001
-      - STAKE=100.0
-      - SUPERVISOR_ADDRESS=supervisor:8000
-      - LOG_LEVEL=INFO
+      - NODE_ROLE=${POUW_MINER1_ROLE:-MINER}
+      - NODE_ID=${POUW_MINER1_ID:-miner_001}
+      - PORT=${POUW_MINER1_PORT:-8001}
+      - STAKE=${POUW_MINER1_STAKE:-100.0}
+      - SUPERVISOR_ADDRESS=${POUW_SUPERVISOR_ADDRESS:-supervisor:8000}
+      - LOG_LEVEL=${POUW_LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${POUW_ENVIRONMENT:-development}
+      - PYTHONUNBUFFERED=1
     networks:
       - pouw-network
     depends_on:
       - supervisor
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${POUW_MINER1_PORT:-8001}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,27 +67,31 @@ services:
   miner2:
     build: .
     container_name: pouw-miner2
-    command: ["python", "main.py", "--role", "MINER", "--port", "8002", "--node-id", "miner_002", "--stake", "150.0"]
+    command: ["python", "main.py", "--role", "${POUW_MINER2_ROLE:-MINER}", "--port", "${POUW_MINER2_PORT:-8002}", "--node-id", "${POUW_MINER2_ID:-miner_002}", "--stake", "${POUW_MINER2_STAKE:-150.0}"]
     ports:
-      - "8002:8002"
+      - "${POUW_MINER2_PORT:-8002}:${POUW_MINER2_PORT:-8002}"
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
       - ./cache:/app/cache
+      - ./config:/app/config:ro
+      - ./.env.development:/app/.env.development:ro
     environment:
-      - NODE_ROLE=MINER
-      - NODE_ID=miner_002
-      - PORT=8002
-      - STAKE=150.0
-      - SUPERVISOR_ADDRESS=supervisor:8000
-      - LOG_LEVEL=INFO
+      - NODE_ROLE=${POUW_MINER2_ROLE:-MINER}
+      - NODE_ID=${POUW_MINER2_ID:-miner_002}
+      - PORT=${POUW_MINER2_PORT:-8002}
+      - STAKE=${POUW_MINER2_STAKE:-150.0}
+      - SUPERVISOR_ADDRESS=${POUW_SUPERVISOR_ADDRESS:-supervisor:8000}
+      - LOG_LEVEL=${POUW_LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${POUW_ENVIRONMENT:-development}
+      - PYTHONUNBUFFERED=1
     networks:
       - pouw-network
     depends_on:
       - supervisor
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${POUW_MINER2_PORT:-8002}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -88,24 +100,61 @@ services:
   verifier:
     build: .
     container_name: pouw-verifier
-    command: ["python", "main.py", "--role", "VERIFIER", "--port", "8003", "--node-id", "verifier_001"]
+    command: ["python", "main.py", "--role", "${POUW_VERIFIER_ROLE:-VERIFIER}", "--port", "${POUW_VERIFIER_PORT:-8003}", "--node-id", "${POUW_VERIFIER_ID:-verifier_001}"]
     ports:
-      - "8003:8003"
+      - "${POUW_VERIFIER_PORT:-8003}:${POUW_VERIFIER_PORT:-8003}"
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
       - ./cache:/app/cache
+      - ./config:/app/config:ro
+      - ./.env.development:/app/.env.development:ro
     environment:
-      - NODE_ROLE=VERIFIER
-      - NODE_ID=verifier_001
-      - PORT=8003
-      - SUPERVISOR_ADDRESS=supervisor:8000
-      - LOG_LEVEL=INFO
+      - NODE_ROLE=${POUW_VERIFIER_ROLE:-VERIFIER}
+      - NODE_ID=${POUW_VERIFIER_ID:-verifier_001}
+      - PORT=${POUW_VERIFIER_PORT:-8003}
+      - SUPERVISOR_ADDRESS=${POUW_SUPERVISOR_ADDRESS:-supervisor:8000}
+      - LOG_LEVEL=${POUW_LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${POUW_ENVIRONMENT:-development}
+      - PYTHONUNBUFFERED=1
     networks:
       - pouw-network
     depends_on:
       - supervisor
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${POUW_VERIFIER_PORT:-8003}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Dashboard service
+  dashboard:
+    build: .
+    container_name: pouw-dashboard
+    command: ["python", "dashboard.py", "--environment", "development"]
+    ports:
+      - "${POUW_DASHBOARD_PORT:-8080}:${POUW_DASHBOARD_PORT:-8080}"
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+      - ./.env.development:/app/.env.development:ro
+    environment:
+      - ENVIRONMENT=${POUW_ENVIRONMENT:-development}
+      - DASHBOARD_HOST=${POUW_DASHBOARD_HOST:-0.0.0.0}
+      - DASHBOARD_PORT=${POUW_DASHBOARD_PORT:-8080}
+      - LOG_LEVEL=${POUW_LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+    networks:
+      - pouw-network
+    depends_on:
+      - supervisor
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${POUW_DASHBOARD_PORT:-8080}/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Load balancer/reverse proxy
   nginx:

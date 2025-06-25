@@ -5,30 +5,73 @@ services:
   pouw-app:
     build: .
     container_name: pouw-production
-    command: ["python", "main.py", "--role", "SUPERVISOR", "--port", "8000", "--node-id", "vps_supervisor"]
+    command: ["python", "main.py", "--role", "${POUW_NODE_ROLE:-SUPERVISOR}", "--port", "${POUW_NODE_PORT:-8000}", "--node-id", "${POUW_NODE_ID:-vps_supervisor}"]
     ports:
-      - "8000:8000"
+      - "${POUW_NODE_PORT:-8000}:${POUW_NODE_PORT:-8000}"
     volumes:
       - pouw-logs:/app/logs
       - pouw-data:/app/data
       - pouw-cache:/app/cache
       - ./config:/app/config:ro
+      - ./.env.production:/app/.env.production:ro
     environment:
-      - NODE_ROLE=SUPERVISOR
-      - NODE_ID=vps_supervisor
-      - PORT=8000
-      - LOG_LEVEL=INFO
-      - ENVIRONMENT=production
+      - NODE_ROLE=${POUW_NODE_ROLE:-SUPERVISOR}
+      - NODE_ID=${POUW_NODE_ID:-vps_supervisor}
+      - PORT=${POUW_NODE_PORT:-8000}
+      - LOG_LEVEL=${POUW_LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${POUW_ENVIRONMENT:-production}
       - PYTHONUNBUFFERED=1
+      # Database configuration
+      - DATABASE_HOST=${POUW_DATABASE_HOST:-localhost}
+      - DATABASE_PORT=${POUW_DATABASE_PORT:-5432}
+      - DATABASE_NAME=${POUW_DATABASE_NAME:-pouw}
+      - DATABASE_USER=${POUW_DATABASE_USER:-pouw}
+      - DATABASE_PASSWORD=${POUW_DATABASE_PASSWORD:-}
+      # Security configuration
+      - SECURITY_SECRET_KEY=${POUW_SECURITY_SECRET_KEY:-}
+      - SECURITY_JWT_SECRET=${POUW_SECURITY_JWT_SECRET:-}
+      # Network configuration
+      - MAX_PEERS=${POUW_MAX_PEERS:-20}
+      - BOOTSTRAP_PEERS=${POUW_BOOTSTRAP_PEERS:-}
+      # Monitoring configuration
+      - DASHBOARD_URL=${POUW_DASHBOARD_URL:-http://localhost:8080}
+      - HEALTH_CHECK_PORT=${POUW_HEALTH_CHECK_PORT:-8001}
     networks:
       - pouw-production
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${POUW_NODE_PORT:-8000}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Dashboard service
+  pouw-dashboard:
+    build: .
+    container_name: pouw-dashboard
+    command: ["python", "dashboard.py", "--environment", "production"]
+    ports:
+      - "${POUW_DASHBOARD_PORT:-8080}:${POUW_DASHBOARD_PORT:-8080}"
+    volumes:
+      - ./config:/app/config:ro
+      - ./.env.production:/app/.env.production:ro
+    environment:
+      - ENVIRONMENT=${POUW_ENVIRONMENT:-production}
+      - DASHBOARD_HOST=${POUW_DASHBOARD_HOST:-0.0.0.0}
+      - DASHBOARD_PORT=${POUW_DASHBOARD_PORT:-8080}
+      - LOG_LEVEL=${POUW_LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+    networks:
+      - pouw-production
+    depends_on:
+      - pouw-app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${POUW_DASHBOARD_PORT:-8080}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Nginx reverse proxy
   nginx:
