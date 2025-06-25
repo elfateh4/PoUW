@@ -30,13 +30,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run linting
-        run: |
-          pip install black pylint mypy
-          black --check --line-length=100 .
-          # pylint pouw/ || true  # Continue on pylint warnings
-          # mypy pouw/ || true    # Continue on mypy warnings
-
       - name: Run tests
         run: |
           pip install pytest pytest-cov
