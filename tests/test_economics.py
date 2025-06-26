@@ -384,6 +384,158 @@ class TestEconomicSystem:
         assert isinstance(stats["assignment_stats"], dict)
         assert "total_tickets" in stats["assignment_stats"]
 
+    class TestTokenSupply:
+        """Test token supply management functionality"""
+
+        def test_token_supply_initialization(self):
+            """Test token supply initialization with custom parameters"""
+            system = EconomicSystem(
+                max_token_supply=1_000_000.0,
+                genesis_supply=100_000.0,
+                base_block_reward=10.0,
+                halving_interval=100_000
+            )
+
+            assert system.max_token_supply == 1_000_000.0
+            assert system.current_supply == 100_000.0  # Genesis supply
+            assert system.base_block_reward == 10.0
+            assert system.halving_interval == 100_000
+            assert system.total_blocks_mined == 0
+
+        def test_block_reward_calculation(self):
+            """Test block reward calculation with halving"""
+            system = EconomicSystem(
+                base_block_reward=12.5,
+                halving_interval=210_000
+            )
+
+            # Initial reward
+            assert system.calculate_block_reward(0) == 12.5
+            assert system.calculate_block_reward(100_000) == 12.5
+
+            # First halving at block 210,000
+            assert system.calculate_block_reward(210_000) == 6.25
+            assert system.calculate_block_reward(300_000) == 6.25
+
+            # Second halving at block 420,000
+            assert system.calculate_block_reward(420_000) == 3.125
+
+        def test_token_minting_with_supply_cap(self):
+            """Test token minting respects supply cap"""
+            system = EconomicSystem(
+                max_token_supply=1000.0,
+                genesis_supply=900.0
+            )
+
+            # Should be able to mint up to max supply
+            assert system.mint_tokens(50.0, "test")
+            assert system.current_supply == 950.0
+
+            assert system.mint_tokens(50.0, "test")
+            assert system.current_supply == 1000.0
+
+            # Should not be able to mint beyond max supply
+            assert not system.mint_tokens(1.0, "test")
+            assert system.current_supply == 1000.0
+
+        def test_block_reward_respects_supply_cap(self):
+            """Test block reward calculation respects max supply"""
+            system = EconomicSystem(
+                max_token_supply=1100.0,
+                genesis_supply=1000.0,
+                base_block_reward=12.5
+            )
+
+            # Should get partial reward when approaching max supply
+            reward = system.calculate_block_reward(0)
+            assert reward == 100.0  # Remaining supply
+
+            # Should get zero reward when max supply reached
+            system.current_supply = 1100.0
+            reward = system.calculate_block_reward(0)
+            assert reward == 0.0
+
+        def test_record_mined_block(self):
+            """Test recording mined blocks"""
+            system = EconomicSystem(genesis_supply=100.0)
+
+            initial_supply = system.current_supply
+
+            # Record a successful mining
+            assert system.record_mined_block(12.5)
+            assert system.current_supply == initial_supply + 12.5
+            assert system.total_blocks_mined == 1
+
+            # Record another block
+            assert system.record_mined_block(12.5)
+            assert system.current_supply == initial_supply + 25.0
+            assert system.total_blocks_mined == 2
+
+        def test_get_token_supply_info(self):
+            """Test getting comprehensive token supply information"""
+            system = EconomicSystem(
+                max_token_supply=21_000_000.0,
+                genesis_supply=1_000_000.0,
+                base_block_reward=12.5,
+                halving_interval=210_000
+            )
+
+            info = system.get_token_supply_info()
+
+            assert info["current_supply"] == 1_000_000.0
+            assert info["max_supply"] == 21_000_000.0
+            assert info["remaining_supply"] == 20_000_000.0
+            assert info["supply_percentage"] == pytest.approx(4.76, rel=1e-2)
+            assert info["genesis_supply"] == 1_000_000.0
+            assert info["current_block_reward"] == 12.5
+            assert info["base_block_reward"] == 12.5
+            assert info["halving_interval"] == 210_000
+            assert not info["supply_exhausted"]
+
+        def test_circulating_supply_calculation(self):
+            """Test circulating supply calculation excludes staked tokens"""
+            system = EconomicSystem(genesis_supply=1000.0)
+
+            # Initially all tokens are circulating
+            assert system.get_circulating_supply() == 1000.0
+
+            # Stake some tokens
+            system.buy_ticket("user1", NodeRole.MINER, 100.0, {})
+            system.buy_ticket("user2", NodeRole.VERIFIER, 50.0, {})
+
+            # Circulating supply should be reduced by staked amounts
+            expected_circulating = 1000.0 - 150.0
+            assert system.get_circulating_supply() == expected_circulating
+
+        def test_inflation_rate_calculation(self):
+            """Test inflation rate calculation"""
+            system = EconomicSystem(
+                genesis_supply=1_000_000.0,
+                base_block_reward=12.5
+            )
+
+            inflation_rate = system.calculate_inflation_rate()
+
+            # With 1 block per minute (525,600 blocks/year)
+            # Annual new tokens = 12.5 * 525,600 = 6,570,000
+            # Inflation rate = (6,570,000 / 1,000,000) * 100 = 657%
+            expected_inflation = (12.5 * 525_600 / 1_000_000.0) * 100
+            assert inflation_rate == pytest.approx(expected_inflation, rel=1e-2)
+
+        def test_supply_health_status(self):
+            """Test supply health status indicators"""
+            system = EconomicSystem(
+                max_token_supply=1000.0,
+                genesis_supply=850.0  # 85% of max supply
+            )
+
+            health = system.get_supply_health_status()
+
+            assert health["supply_exhaustion_risk"] == "MEDIUM"  # 80-95%
+            assert health["reward_sustainability"] == "SUSTAINABLE"
+            assert "inflation_rate" in health
+            assert "circulating_ratio" in health
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

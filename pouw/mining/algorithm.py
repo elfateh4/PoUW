@@ -57,6 +57,7 @@ class PoUWMiner:
         model_size: int,
         transactions: List[Transaction],
         blockchain,
+        economic_system=None,
     ) -> Optional[Tuple[Block, MiningProof]]:
         """
         Mine a block using PoUW algorithm (Algorithm 2 from paper).
@@ -68,6 +69,7 @@ class PoUWMiner:
             model_size: Number of weights and biases in model
             transactions: Transactions to include in block
             blockchain: Reference to blockchain for block creation
+            economic_system: Optional economic system for dynamic block rewards
 
         Returns:
             Tuple of (Block, MiningProof) if successful, None otherwise
@@ -97,7 +99,7 @@ class PoUWMiner:
 
             # Create block with current nonce
             block = self._create_block_with_nonce(
-                current_nonce, iteration_message, transactions, blockchain
+                current_nonce, iteration_message, transactions, blockchain, economic_system
             )
 
             # Check if block meets difficulty target
@@ -135,6 +137,7 @@ class PoUWMiner:
         iteration_message: IterationMessage,
         transactions: List[Transaction],
         blockchain,
+        economic_system=None,
     ) -> Block:
         """Create a block with the given nonce"""
 
@@ -156,11 +159,19 @@ class PoUWMiner:
             zero_nonce_block_hash=znb_hash,
         )
 
-        # Create coinbase transaction
+        # Create coinbase transaction with dynamic block reward
+        if economic_system:
+            # Calculate block reward based on current supply and halving schedule
+            block_height = len(blockchain.chain)
+            block_reward = economic_system.calculate_block_reward(block_height)
+        else:
+            # Fallback to default reward if no economic system provided
+            block_reward = 12.5
+        
         coinbase_tx = Transaction(
             version=1,
             inputs=[{"previous_hash": "0" * 64, "index": -1}],
-            outputs=[{"address": self.miner_id, "amount": 12.5}],
+            outputs=[{"address": self.miner_id, "amount": block_reward}],
         )
 
         all_transactions = [coinbase_tx] + transactions
@@ -193,7 +204,7 @@ class PoUWMiner:
         setattr(self, f"_mining_data_{storage_key}", mining_data)
 
     def commit_zero_nonce_block(
-        self, iteration: int, transactions: List[Transaction], blockchain
+        self, iteration: int, transactions: List[Transaction], blockchain, economic_system=None
     ) -> str:
         """
         Commit to a zero-nonce block k iterations in advance.
@@ -216,11 +227,19 @@ class PoUWMiner:
             zero_nonce_block_hash="",
         )
 
-        # Create with fixed transactions
+        # Create with fixed transactions and dynamic block reward
+        if economic_system:
+            # Calculate block reward for future block
+            future_block_height = len(blockchain.chain) + self.k
+            block_reward = economic_system.calculate_block_reward(future_block_height)
+        else:
+            # Fallback to default reward
+            block_reward = 12.5
+            
         coinbase_tx = Transaction(
             version=1,
             inputs=[{"previous_hash": "0" * 64, "index": -1}],
-            outputs=[{"address": self.miner_id, "amount": 12.5}],
+            outputs=[{"address": self.miner_id, "amount": block_reward}],
         )
 
         all_transactions = [coinbase_tx] + transactions

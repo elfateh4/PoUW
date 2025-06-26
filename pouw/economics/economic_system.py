@@ -16,7 +16,9 @@ from .pricing import DynamicPricingEngine, MarketMetrics
 class EconomicSystem:
     """Main economic system coordinator that integrates all economic components"""
 
-    def __init__(self, base_price: float = 10.0):
+    def __init__(self, base_price: float = 10.0, max_token_supply: float = 21_000_000.0, 
+                 genesis_supply: float = 1_000.0, base_block_reward: float = 50.0,
+                 halving_interval: int = 210_000):
         self.staking_manager = StakingManager()
         self.task_matcher = TaskMatcher(self.staking_manager.stake_pool)
         self.reward_distributor = RewardDistributor()
@@ -28,6 +30,14 @@ class EconomicSystem:
 
         # Market metrics
         self.market_metrics = MarketMetrics()
+        
+        # Token supply management
+        self.max_token_supply = max_token_supply
+        self.genesis_supply = genesis_supply
+        self.base_block_reward = base_block_reward
+        self.halving_interval = halving_interval
+        self.current_supply = genesis_supply  # Start with genesis supply
+        self.total_blocks_mined = 0  # Track blocks for halving calculation
 
     def buy_ticket(
         self, owner_id: str, role: NodeRole, stake_amount: float, preferences: Dict[str, Any]
@@ -308,3 +318,115 @@ class EconomicSystem:
             recommendations.append("Economic system appears healthy - continue monitoring")
 
         return recommendations
+
+    # Token supply management methods
+    
+    def calculate_block_reward(self, block_height: int) -> float:
+        """Calculate block reward with halving and supply cap consideration"""
+        # Check if we've reached maximum supply
+        if self.current_supply >= self.max_token_supply:
+            return 0.0  # No more tokens to mint
+        
+        # Calculate current reward based on halving schedule
+        halvings = block_height // self.halving_interval
+        current_reward = self.base_block_reward / (2 ** halvings)
+        
+        # Ensure we don't exceed max supply
+        remaining_supply = self.max_token_supply - self.current_supply
+        if current_reward > remaining_supply:
+            current_reward = remaining_supply
+        
+        return max(current_reward, 0.0)
+    
+    def mint_tokens(self, amount: float, reason: str = "mining_reward") -> bool:
+        """Mint new tokens if under supply cap"""
+        if amount <= 0:
+            return False
+            
+        if self.current_supply + amount > self.max_token_supply:
+            return False  # Cannot exceed max supply
+            
+        self.current_supply += amount
+        return True
+    
+    def get_token_supply_info(self) -> Dict[str, Any]:
+        """Get current token supply information"""
+        remaining_supply = self.max_token_supply - self.current_supply
+        supply_percentage = (self.current_supply / self.max_token_supply) * 100
+        
+        # Calculate next halving
+        next_halving_block = ((self.total_blocks_mined // self.halving_interval) + 1) * self.halving_interval
+        blocks_until_halving = next_halving_block - self.total_blocks_mined
+        
+        # Calculate current block reward
+        current_reward = self.calculate_block_reward(self.total_blocks_mined)
+        
+        return {
+            "current_supply": self.current_supply,
+            "max_supply": self.max_token_supply,
+            "remaining_supply": remaining_supply,
+            "supply_percentage": supply_percentage,
+            "genesis_supply": self.genesis_supply,
+            "total_blocks_mined": self.total_blocks_mined,
+            "current_block_reward": current_reward,
+            "base_block_reward": self.base_block_reward,
+            "halving_interval": self.halving_interval,
+            "blocks_until_halving": blocks_until_halving,
+            "next_halving_block": next_halving_block,
+            "supply_exhausted": self.current_supply >= self.max_token_supply
+        }
+    
+    def record_mined_block(self, block_reward: float) -> bool:
+        """Record a mined block and update token supply"""
+        if not self.mint_tokens(block_reward, "block_mining"):
+            return False
+            
+        self.total_blocks_mined += 1
+        return True
+    
+    def get_circulating_supply(self) -> float:
+        """Get the current circulating supply (excludes locked stakes)"""
+        # Calculate total staked tokens
+        total_staked = 0.0
+        for ticket in self.staking_manager.stake_pool.tickets.values():
+            if not ticket.is_expired():
+                total_staked += ticket.stake_amount
+        
+        # Circulating supply = total supply - staked tokens
+        return max(self.current_supply - total_staked, 0.0)
+    
+    def validate_transaction_amount(self, amount: float) -> bool:
+        """Validate that a transaction amount doesn't exceed circulating supply"""
+        circulating = self.get_circulating_supply()
+        return amount <= circulating
+    
+    def get_supply_health_status(self) -> Dict[str, Any]:
+        """Get token supply health indicators"""
+        supply_info = self.get_token_supply_info()
+        
+        # Calculate health indicators
+        supply_health = {
+            "supply_exhaustion_risk": "HIGH" if supply_info["supply_percentage"] > 95 else 
+                                     "MEDIUM" if supply_info["supply_percentage"] > 80 else "LOW",
+            "inflation_rate": self.calculate_inflation_rate(),
+            "reward_sustainability": "SUSTAINABLE" if supply_info["current_block_reward"] > 0.1 else 
+                                   "DECLINING" if supply_info["current_block_reward"] > 0 else "EXHAUSTED",
+            "circulating_ratio": (self.get_circulating_supply() / self.current_supply * 100) if self.current_supply > 0 else 0
+        }
+        
+        return {**supply_info, **supply_health}
+    
+    def calculate_inflation_rate(self) -> float:
+        """Calculate current annual inflation rate"""
+        current_reward = self.calculate_block_reward(self.total_blocks_mined)
+        
+        # Assume ~1 block per minute (525,600 blocks per year)
+        blocks_per_year = 525_600
+        annual_new_tokens = current_reward * blocks_per_year
+        
+        if self.current_supply > 0:
+            inflation_rate = (annual_new_tokens / self.current_supply) * 100
+        else:
+            inflation_rate = 0.0
+            
+        return inflation_rate
