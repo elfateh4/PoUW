@@ -1,0 +1,36 @@
+{
+  "model_type": "mlp",
+  "architecture": {
+    "input_size": 784,
+    "hidden_sizes": [64, 32],
+    "output_size": 10
+  },
+  "optimizer": {
+    "type": "adam",
+    "learning_rate": 0.001,
+    "beta1": 0.9,
+    "beta2": 0.999
+  },
+  "stopping_criterion": {
+    "type": "max_epochs",
+    "max_epochs": 10,
+    "early_stopping": true,
+    "patience": 3
+  },
+  "validation_strategy": {
+    "type": "holdout",
+    "validation_split": 0.2
+  },
+  "metrics": ["accuracy", "loss"],
+  "dataset_info": {
+    "format": "MNIST",
+    "batch_size": 16,
+    "training_percent": 0.8,
+    "size": 10000
+  },
+  "performance_requirements": {
+    "gpu": false,
+    "min_accuracy": 0.7,
+    "expected_training_time": 1200
+  }
+} 

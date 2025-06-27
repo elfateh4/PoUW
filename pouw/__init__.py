@@ -1,30 +1,24 @@
 """
-PoUW (Proof of Useful Work) - Main Package
+PoUW (Proof of Useful Work) - Production-ready blockchain implementation.
 
-This package implements a complete blockchain system that replaces wasteful proof-of-work
-with useful machine learning computation, as described in the research paper:
-"A Proof of Useful Work for Artificial Intelligence on the Blockchain" by Lihu et al.
+This package provides a comprehensive implementation of the Proof of Useful Work
+consensus mechanism for distributed machine learning tasks.
 
-The system provides:
-- Revolutionary PoUW mining algorithm that uses ML training for consensus
-- Comprehensive economic incentive system
-- Advanced P2P networking with VPN mesh support
-- Enterprise-grade security and production features
-- Complete blockchain infrastructure with specialized transaction types
-
-Key Components:
-- Blockchain: Core blockchain infrastructure with PoUW-specific enhancements
-- Mining: Revolutionary mining algorithm using ML computation
-- ML: Distributed training system with gradient sharing
-- Economics: Sophisticated economic incentive system
-- Network: Advanced P2P networking and operations
-- Security: Comprehensive security and attack mitigation
-- Production: Enterprise deployment and optimization features
+Features:
+- Blockchain core functionality with standardized transaction format
+- Distributed ML training and verification
+- VPN mesh networking and P2P communication
+- Advanced security and byzantine fault tolerance
+- Economic incentive system with staking and rewards
+- Production monitoring and GPU acceleration
+- Enterprise deployment with Kubernetes support
+- CI/CD pipeline integration
+- Comprehensive data management with Reed-Solomon encoding
+- Cryptographic primitives including BLS threshold signatures
 """
 
-# Core blockchain infrastructure
+# Core blockchain functionality
 from .blockchain import (
-    # Core blockchain data structures
     Transaction,
     PayForTaskTransaction,
     BuyTicketsTransaction,
@@ -32,7 +26,6 @@ from .blockchain import (
     Block,
     MLTask,
     Blockchain,
-    # Standardized transaction format (research paper compliance)
     StandardizedTransactionFormat,
     PoUWOpReturnData,
     PoUWOpCode,
@@ -40,41 +33,14 @@ from .blockchain import (
     parse_standardized_pouw_transaction,
 )
 
-# Revolutionary PoUW mining system
-from .mining import MiningProof, PoUWMiner, PoUWVerifier
-
-# Distributed machine learning system
-from .ml import MiniBatch, GradientUpdate, IterationMessage, MLModel, SimpleMLP, DistributedTrainer
-
-# Comprehensive economic system
-from .economics import (
-    # Core staking and participation
-    NodeRole,
-    Ticket,
-    StakePool,
-    StakingManager,
-    # Task assignment and rewards
-    TaskMatcher,
-    RewardScheme,
-    RewardDistributor,
-    # Market dynamics and pricing
-    DynamicPricingEngine,
-    MarketCondition,
-    MarketMetrics,
-    # Main economic coordinator
-    EconomicSystem,
-)
-
-# Advanced networking infrastructure
+# Network and communication
 from .network import (
-    # Core P2P communication
     NetworkMessage,
     MessageHandler,
     BlockchainMessageHandler,
     MLMessageHandler,
     P2PNode,
     MessageHistory,
-    # Advanced network operations
     NodeStatus,
     LeaderElectionState,
     NodeHealthMetrics,
@@ -89,65 +55,189 @@ from .network import (
     NetworkOperationsManager,
 )
 
-# Comprehensive security system
-try:
-    from .security import (
-        # Core security components (always available)
-        AttackType,
-        SecurityAlert,
-        GradientPoisoningDetector,
-        ByzantineFaultTolerance,
-        AttackMitigationSystem,
-    )
+# Machine learning functionality
+from .ml import (
+    MiniBatch,
+    GradientUpdate,
+    IterationMessage,
+    MLModel,
+    SimpleMLP,
+    DistributedTrainer,
+)
 
-    # Try to import advanced security features
-    try:
-        from .security import (
-            BehavioralAnomalyDetector,
-            SecurityEvent,
-            SecurityLevel,
-            AnomalyType,
-            NodeAuthenticator,
-            SecurityMonitor,
-        )
+# Mining and consensus
+from .mining import (
+    MiningProof,
+    PoUWMiner,
+    PoUWVerifier,
+)
 
-        ADVANCED_SECURITY_AVAILABLE = True
-    except ImportError:
-        ADVANCED_SECURITY_AVAILABLE = False
-except ImportError:
-    # Basic security components only
-    AttackType = None
-    SecurityAlert = None
-    GradientPoisoningDetector = None
-    ByzantineFaultTolerance = None
-    AttackMitigationSystem = None
+# Security framework
+from .security import (
+    AttackType,
+    SecurityAlert,
+    GradientPoisoningDetector,
+    ByzantineFaultTolerance,
+    AttackMitigationSystem,
+    BehavioralAnomalyDetector,
+    NodeAuthenticator,
+    NetworkIntrusionDetector,
+    ComprehensiveSecurityMonitor,
+    SecurityEvent,
+    SecurityLevel,
+    AnomalyType,
+    NodeBehaviorProfile,
+)
 
-# Production and deployment features
-try:
-    from .production import PerformanceMonitor
+# Economic system
+from .economics import (
+    NodeRole,
+    Ticket,
+    StakePool,
+    StakingManager,
+    TaskMatcher,
+    RewardScheme,
+    RewardDistributor,
+    DynamicPricingEngine,
+    MarketCondition,
+    MarketMetrics,
+    EconomicSystem,
+)
 
-    PRODUCTION_FEATURES_AVAILABLE = True
-except ImportError:
-    # Production features not available
-    PerformanceMonitor = None
-    PRODUCTION_FEATURES_AVAILABLE = False
+# Production features
+from .production import (
+    ProductionDatasetManager,
+    DatasetMetadata,
+    PerformanceMonitor,
+    PerformanceProfiler,
+    OptimizationManager,
+    PerformanceMetrics,
+    SystemHealth,
+    monitor_mining_performance,
+    monitor_training_performance,
+    monitor_verification_performance,
+    GPUManager,
+    GPUAcceleratedTrainer,
+    GPUAcceleratedMiner,
+    GPUMemoryManager,
+    LargeModelArchitectures,
+    LargeModelManager,
+    ModelConfig,
+    ModelArchitectures,
+    CrossValidationManager,
+    HyperparameterOptimizer,
+    ModelArchitectureConfig,
+    ValidationResults,
+    HyperparameterConfig,
+)
 
-# Advanced cryptographic features
-try:
-    from .advanced import AdvancedWorkerSelection, ZeroNonceCommitment
+# Deployment infrastructure
+from .deployment import (
+    KubernetesOrchestrator,
+    PoUWDeploymentManager,
+    ContainerConfiguration,
+    ServiceConfiguration,
+    DeploymentStatus,
+    ProductionMonitor,
+    MetricsCollector,
+    AlertingSystem,
+    LoggingManager,
+    HealthChecker,
+    PerformanceAnalyzer,
+    LoadBalancer,
+    AutoScaler,
+    InfrastructureAsCode,
+    DeploymentAutomation,
+    ConfigurationManager,
+    ResourceManager,
+)
 
-    ADVANCED_FEATURES_AVAILABLE = True
-except ImportError:
-    # Advanced features not available
-    AdvancedWorkerSelection = None
-    ZeroNonceCommitment = None
-    ADVANCED_FEATURES_AVAILABLE = False
+# CI/CD pipeline
+from .cicd import (
+    GitHubActionsManager,
+    WorkflowConfiguration,
+    JobConfiguration,
+    StepConfiguration,
+    TriggerConfiguration,
+    JenkinsPipelineManager,
+    JenkinsfileGenerator,
+    PipelineStage,
+    PipelineConfiguration,
+    DockerBuildManager,
+    DockerImageBuilder,
+    ContainerRegistry,
+    ImageConfiguration,
+    BuildConfiguration,
+    TestAutomationManager,
+    TestSuite,
+    CoverageAnalyzer,
+    TestConfiguration,
+    TestResult,
+    TestSuiteResult,
+    TestType,
+    PoUWTestSuites,
+    DeploymentPipelineManager,
+    ReleaseManager,
+    DeploymentConfiguration,
+    DeploymentResult,
+    ReleaseInfo,
+    DeploymentStrategy,
+    Environment,
+    PlatformType,
+    PoUWDeploymentConfigurations,
+    CodeQualityManager,
+    SecurityScanner,
+    QualityReport,
+    QualityMetrics,
+    QualityIssue,
+    QualityConfiguration,
+    QualityGateRule,
+    PoUWQualityConfiguration,
+)
 
-# Main node implementation
-from .node import PoUWNode
+# Data management
+from .data import (
+    DataShardType,
+    DataShard,
+    DataLocation,
+    ReedSolomonEncoder,
+    ConsistentHashRing,
+    DataAvailabilityManager,
+    DatasetSplitter,
+)
 
+# Advanced features
+from .advanced import (
+    VRFType,
+    VRFProof,
+    VerifiableRandomFunction,
+    AdvancedWorkerSelection,
+    ZeroNonceCommitment,
+    MessageHistoryMerkleTree,
+)
+
+# Cryptographic primitives
+from .crypto import (
+    DKGState,
+    BLSKeyShare,
+    DKGComplaint,
+    ThresholdSignature,
+    BLSThresholdCrypto,
+    DistributedKeyGeneration,
+    SupervisorConsensus,
+)
+
+# Version and metadata
+__version__ = "1.0.0"
+__author__ = "PoUW Development Team"
+__license__ = "MIT"
+__description__ = (
+    "Proof of Useful Work blockchain for distributed machine learning"
+)
+
+# All exports
 __all__ = [
-    # Core blockchain
+    # Blockchain core
     "Transaction",
     "PayForTaskTransaction",
     "BuyTicketsTransaction",
@@ -160,30 +250,8 @@ __all__ = [
     "PoUWOpCode",
     "create_standardized_pouw_transaction",
     "parse_standardized_pouw_transaction",
-    # Mining system
-    "MiningProof",
-    "PoUWMiner",
-    "PoUWVerifier",
-    # ML system
-    "MiniBatch",
-    "GradientUpdate",
-    "IterationMessage",
-    "MLModel",
-    "SimpleMLP",
-    "DistributedTrainer",
-    # Economics
-    "NodeRole",
-    "Ticket",
-    "StakePool",
-    "StakingManager",
-    "TaskMatcher",
-    "RewardScheme",
-    "RewardDistributor",
-    "DynamicPricingEngine",
-    "MarketCondition",
-    "MarketMetrics",
-    "EconomicSystem",
-    # Networking
+    
+    # Network
     "NetworkMessage",
     "MessageHandler",
     "BlockchainMessageHandler",
@@ -202,18 +270,156 @@ __all__ = [
     "MessageHistoryCompressor",
     "VPNMeshTopologyManager",
     "NetworkOperationsManager",
-    # Main node
-    "PoUWNode",
+    
+    # ML
+    "MiniBatch",
+    "GradientUpdate",
+    "IterationMessage",
+    "MLModel",
+    "SimpleMLP",
+    "DistributedTrainer",
+    
+    # Mining
+    "MiningProof",
+    "PoUWMiner",
+    "PoUWVerifier",
+    
+    # Security
+    "AttackType",
+    "SecurityAlert",
+    "GradientPoisoningDetector",
+    "ByzantineFaultTolerance",
+    "AttackMitigationSystem",
+    "BehavioralAnomalyDetector",
+    "NodeAuthenticator",
+    "NetworkIntrusionDetector",
+    "ComprehensiveSecurityMonitor",
+    "SecurityEvent",
+    "SecurityLevel",
+    "AnomalyType",
+    "NodeBehaviorProfile",
+    
+    # Economics
+    "NodeRole",
+    "Ticket",
+    "StakePool",
+    "StakingManager",
+    "TaskMatcher",
+    "RewardScheme",
+    "RewardDistributor",
+    "DynamicPricingEngine",
+    "MarketCondition",
+    "MarketMetrics",
+    "EconomicSystem",
+    
+    # Production
+    "ProductionDatasetManager",
+    "DatasetMetadata",
+    "PerformanceMonitor",
+    "PerformanceProfiler",
+    "OptimizationManager",
+    "PerformanceMetrics",
+    "SystemHealth",
+    "monitor_mining_performance",
+    "monitor_training_performance",
+    "monitor_verification_performance",
+    "GPUManager",
+    "GPUAcceleratedTrainer",
+    "GPUAcceleratedMiner",
+    "GPUMemoryManager",
+    "LargeModelArchitectures",
+    "LargeModelManager",
+    "ModelConfig",
+    "ModelArchitectures",
+    "CrossValidationManager",
+    "HyperparameterOptimizer",
+    "ModelArchitectureConfig",
+    "ValidationResults",
+    "HyperparameterConfig",
+    
+    # Deployment
+    "KubernetesOrchestrator",
+    "PoUWDeploymentManager",
+    "ContainerConfiguration",
+    "ServiceConfiguration",
+    "DeploymentStatus",
+    "ProductionMonitor",
+    "MetricsCollector",
+    "AlertingSystem",
+    "LoggingManager",
+    "HealthChecker",
+    "PerformanceAnalyzer",
+    "LoadBalancer",
+    "AutoScaler",
+    "InfrastructureAsCode",
+    "DeploymentAutomation",
+    "ConfigurationManager",
+    "ResourceManager",
+    
+    # CI/CD
+    "GitHubActionsManager",
+    "WorkflowConfiguration",
+    "JobConfiguration",
+    "StepConfiguration",
+    "TriggerConfiguration",
+    "JenkinsPipelineManager",
+    "JenkinsfileGenerator",
+    "PipelineStage",
+    "PipelineConfiguration",
+    "DockerBuildManager",
+    "DockerImageBuilder",
+    "ContainerRegistry",
+    "ImageConfiguration",
+    "BuildConfiguration",
+    "TestAutomationManager",
+    "TestSuite",
+    "CoverageAnalyzer",
+    "TestConfiguration",
+    "TestResult",
+    "TestSuiteResult",
+    "TestType",
+    "PoUWTestSuites",
+    "DeploymentPipelineManager",
+    "ReleaseManager",
+    "DeploymentConfiguration",
+    "DeploymentResult",
+    "ReleaseInfo",
+    "DeploymentStrategy",
+    "Environment",
+    "PlatformType",
+    "PoUWDeploymentConfigurations",
+    "CodeQualityManager",
+    "SecurityScanner",
+    "QualityReport",
+    "QualityMetrics",
+    "QualityIssue",
+    "QualityConfiguration",
+    "QualityGateRule",
+    "PoUWQualityConfiguration",
+    
+    # Data management
+    "DataShardType",
+    "DataShard",
+    "DataLocation",
+    "ReedSolomonEncoder",
+    "ConsistentHashRing",
+    "DataAvailabilityManager",
+    "DatasetSplitter",
+    
+    # Advanced features
+    "VRFType",
+    "VRFProof",
+    "VerifiableRandomFunction",
+    "AdvancedWorkerSelection",
+    "ZeroNonceCommitment",
+    "MessageHistoryMerkleTree",
+    
+    # Cryptography
+    "DKGState",
+    "BLSKeyShare",
+    "DKGComplaint",
+    "ThresholdSignature",
+    "BLSThresholdCrypto",
+    "DistributedKeyGeneration",
+    "SupervisorConsensus",
 ]
-
-# Version and metadata
-__version__ = "1.0.0"
-__author__ = "PoUW Development Team"
-__description__ = "Proof of Useful Work blockchain implementation"
-__url__ = "https://github.com/your-org/pouw"
-
-# Production readiness indicators
-__status__ = "Production"
-__compliance__ = "99.9% Research Paper Compliance"
-__security_level__ = "Enterprise Grade"
-__performance__ = "Optimized for Scale"

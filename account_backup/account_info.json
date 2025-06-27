@@ -1,0 +1,15 @@
+{
+  "node_id": "cpu-miner",
+  "miner_address": "miner_cpu-miner",
+  "export_date": "2025-06-27T22:03:52.988049",
+  "files_exported": [
+    "blockchain.db",
+    "configs/cpu-miner.json"
+  ],
+  "instructions": {
+    "1": "Copy the entire account_backup folder to your new device",
+    "2": "Install PoUW on the new device",
+    "3": "Run the import_account.py script on the new device",
+    "4": "Your coins and mining history will be available"
+  }
+}

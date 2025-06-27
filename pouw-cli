@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""
+PoUW CLI Executable Script
+
+This script provides easy access to the PoUW CLI without requiring 
+module path specification.
+"""
+
+import sys
+from pathlib import Path
+
+# Add the project root to Python path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+# Import and run the CLI
+if __name__ == "__main__":
+    try:
+        from pouw.cli import main
+        import asyncio
+        asyncio.run(main())
+    except ImportError as e:
+        print(f"Error importing PoUW CLI: {e}")
+        print("Make sure you're running from the project root directory")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error running PoUW CLI: {e}")
+        sys.exit(1) 
