@@ -252,11 +252,22 @@ class InteractiveMode:
                 node_id = nodes[choice - 1]['node_id']
                 
                 print(f"\n🔄 Restarting node {node_id}...")
-                success = self.cli.restart_node(node_id)
-                if success:
-                    print(f"✅ Node {node_id} restarted successfully!")
-                else:
-                    print(f"❌ Failed to restart node {node_id}")
+                
+                # Handle async restart properly
+                try:
+                    loop = asyncio.get_running_loop()
+                    # Create task to restart the node
+                    loop.create_task(self.cli.restart_node_async(node_id))
+                    print(f"✅ Node {node_id} restart initiated!")
+                    print("💡 Use 'Node Status' to check if restart "
+                          "completed.")
+                except RuntimeError:
+                    # Fallback for environments without running loop
+                    success = self.cli.restart_node(node_id)
+                    if success:
+                        print(f"✅ Node {node_id} restarted successfully!")
+                    else:
+                        print(f"❌ Failed to restart node {node_id}")
             else:
                 print("❌ Invalid choice")
         except ValueError:
@@ -911,17 +922,20 @@ class InteractiveMode:
             print(f"   Total Coins: {total_coins}")
             print(f"   Blocks Mined: {blocks_mined}")
             if blocks_mined > 0:
-                print(f"   Average Reward: {total_coins/blocks_mined:.2f} coins/block")
-                print(f"   Mining Success Rate: {(blocks_mined/len(blocks_data))*100:.1f}%")
+                avg_reward = total_coins / blocks_mined
+                success_rate = (blocks_mined / len(blocks_data)) * 100
+                print(f"   Average Reward: {avg_reward:.2f} coins/block")
+                print(f"   Mining Success Rate: {success_rate:.1f}%")
             
             # Show recent mining activity
             if mining_history:
-                print(f"\n📊 Recent Mining Activity (last 5 blocks):")
+                print("\n📊 Recent Mining Activity (last 5 blocks):")
                 # Sort by timestamp and get recent
                 mining_history.sort(key=lambda x: x['timestamp'], reverse=True)
                 recent = mining_history[:5]
                 for activity in recent:
-                    timestamp = datetime.fromtimestamp(activity['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+                    timestamp = datetime.fromtimestamp(
+                        activity['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
                     print(f"   Block #{activity['block_hash'][:16]}...: "
                           f"Nonce {activity['nonce']}, "
                           f"Reward {activity['reward']}, "
@@ -2081,10 +2095,26 @@ class PoUWCLI:
             return False
     
     def restart_node(self, node_id: str, **kwargs) -> bool:
-        """Restart a PoUW node"""
+        """Restart a PoUW node (synchronous version)"""
         self.stop_node(node_id)
         time.sleep(2)  # Brief pause
-        return asyncio.run(self.start_node(node_id, **kwargs))
+        
+        # Use create_task to run the async method in the current loop
+        try:
+            loop = asyncio.get_running_loop()
+            # Create a task and run it synchronously
+            task = loop.create_task(self.start_node(node_id, **kwargs))
+            return True  # Return immediately - the task will run
+        except RuntimeError:
+            # No running loop, use asyncio.run
+            return asyncio.run(self.start_node(node_id, **kwargs))
+    
+    async def restart_node_async(self, node_id: str, **kwargs) -> bool:
+        """Restart a PoUW node (async version)"""
+        self.stop_node(node_id)
+        await asyncio.sleep(2)  # Brief pause
+        await self.start_node(node_id, **kwargs)
+        return True
     
     def get_node_status(self, node_id: str) -> Dict[str, Any]:
         """Get detailed status of a node"""
@@ -2191,8 +2221,10 @@ class PoUWCLI:
             print(f"   Total Coins: {total_coins}")
             print(f"   Blocks Mined: {blocks_mined}")
             if blocks_mined > 0:
-                print(f"   Average Reward: {total_coins/blocks_mined:.2f} coins/block")
-                print(f"   Mining Success Rate: {(blocks_mined/len(blocks_data))*100:.1f}%")
+                avg_reward = total_coins / blocks_mined
+                success_rate = (blocks_mined / len(blocks_data)) * 100
+                print(f"   Average Reward: {avg_reward:.2f} coins/block")
+                print(f"   Mining Success Rate: {success_rate:.1f}%")
             
             # Show recent mining activity
             if mining_history:
