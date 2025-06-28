@@ -3,7 +3,8 @@
 PoUW CLI - Command Line Interface for PoUW Node Management
 
 This module provides a comprehensive command-line interface for managing
-PoUW blockchain nodes including starting, stopping, monitoring, and configuration.
+PoUW blockchain nodes including starting, stopping, monitoring, and 
+configuration.
 
 Usage:
     pouw-cli start --node-id worker-1 --node-type worker
@@ -21,7 +22,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from pathlib import Path
 import psutil
 import logging
@@ -29,6 +30,8 @@ from datetime import datetime
 import tarfile
 import shutil
 import tempfile
+import socket
+import urllib.request
 
 from .node import PoUWNode, NodeConfiguration
 
@@ -2758,7 +2761,6 @@ class PoUWCLI:
         print(f"\n🌐 Network Details:")
         
         # Get local IP
-        import socket
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
                 s.connect(("8.8.8.8", 80))
@@ -2769,11 +2771,37 @@ class PoUWCLI:
         # Get external IP
         external_ip = "unknown"
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.connect(("8.8.8.8", 80))
-                external_ip = s.getsockname()[0]
-        except:
-            pass
+            # Try multiple external IP services
+            services = [
+                "https://api.ipify.org?format=json",
+                "https://ipapi.co/json/",
+                "https://httpbin.org/ip"
+            ]
+            
+            for service_url in services:
+                try:
+                    with urllib.request.urlopen(service_url, timeout=5) as response:
+                        data = json.loads(response.read().decode())
+                        
+                        # Different services return IP in different fields
+                        if 'ip' in data:
+                            external_ip = data['ip']
+                            break
+                        elif 'origin' in data:  # httpbin.org format
+                            external_ip = data['origin']
+                            break
+                except:
+                    continue
+                    
+            # Fallback: if all services fail, use local detection but mark it clearly
+            if external_ip == "unknown":
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                    s.connect(("8.8.8.8", 80))
+                    external_ip = f"{s.getsockname()[0]} (local)"
+                    
+        except Exception as e:
+            # Final fallback
+            external_ip = "unavailable"
         
         # Get hostname
         hostname = socket.gethostname()
