@@ -2046,17 +2046,36 @@ class PoUWCLI:
             node = PoUWNode(node_config)
             
             if daemon:
-                # Start in background
+                # Start in background with proper async handling
                 import multiprocessing
-                process = multiprocessing.Process(target=node.start)
+                
+                def run_node_async():
+                    """Wrapper to run async node.start() in a new event loop"""
+                    try:
+                        asyncio.run(node.start())
+                    except Exception as e:
+                        print(f"Node {node_id} failed to start: {e}")
+                        # Clean up PID file if node fails to start
+                        cli = PoUWCLI()
+                        cli.remove_node_pid(node_id)
+                
+                process = multiprocessing.Process(target=run_node_async)
                 process.start()
-                self.save_node_pid(node_id, process.pid)
-                print(f"Node {node_id} started with PID {process.pid}")
+                
+                # Wait a moment to see if the process starts successfully
+                time.sleep(1)
+                if process.is_alive():
+                    self.save_node_pid(node_id, process.pid)
+                    print(f"Node {node_id} started with PID {process.pid}")
+                    return True
+                else:
+                    print(f"Node {node_id} failed to start (process died)")
+                    return False
             else:
                 # Start in foreground
                 await node.start()
+                return True
             
-            return True
         except Exception as e:
             self.logger.error(f"Failed to start node {node_id}: {e}")
             return False
@@ -2065,21 +2084,31 @@ class PoUWCLI:
         """Stop a PoUW node"""
         pid = self.get_node_pid(node_id)
         if not pid:
-            print(f"Node {node_id} is not running")
+            print(f"Node {node_id} is not running (no PID found)")
             return False
+        
+        print(f"Attempting to stop node {node_id} with PID {pid}")
         
         try:
             process = psutil.Process(pid)
+            print(f"Found process: {process.name()} (PID: {pid})")
+            
             if force:
+                print(f"Force killing process {pid}")
                 process.kill()
             else:
+                print(f"Terminating process {pid}")
                 process.terminate()
             
             # Wait for process to stop
             try:
+                print(f"Waiting for process {pid} to stop...")
                 process.wait(timeout=10)
+                print(f"Process {pid} stopped successfully")
             except psutil.TimeoutExpired:
+                print(f"Process {pid} did not stop within timeout")
                 if not force:
+                    print(f"Force killing process {pid}")
                     process.kill()
                     process.wait(timeout=5)
             
@@ -2087,10 +2116,12 @@ class PoUWCLI:
             print(f"Node {node_id} stopped")
             return True
         except psutil.NoSuchProcess:
+            print(f"Process {pid} was already stopped")
             self.remove_node_pid(node_id)
             print(f"Node {node_id} was already stopped")
             return True
         except Exception as e:
+            print(f"Error stopping node {node_id}: {e}")
             self.logger.error(f"Failed to stop node {node_id}: {e}")
             return False
     

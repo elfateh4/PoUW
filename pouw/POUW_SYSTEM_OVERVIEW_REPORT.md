@@ -212,7 +212,7 @@ The PoUW system integrates multiple sophisticated components:
 
 ## Node Types and Roles
 
-### Node Types (As Defined in the PoUW Paper)
+### Node Types
 
 The PoUW system implements six distinct node types as specified in the arXiv paper:
 
