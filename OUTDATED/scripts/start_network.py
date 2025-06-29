@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 from pouw.node import PoUWNode
-from pouw.economics import NodeRole
+from pouw.economics.staking import NodeRole  # Import NodeRole from staking module
 
 
 class NetworkBootstrap:

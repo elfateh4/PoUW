@@ -165,8 +165,8 @@ class InteractiveMode:
             print("\n⚙️  Node Configuration:")
             node_type = self.get_choice(
                 "Select node type",
-                ["worker", "supervisor", "miner", "hybrid"],
-                "worker"
+                ["client", "miner", "supervisor", "evaluator", "verifier", "peer"],
+                "miner"
             )
             
             port = self.get_input("Port", "8333")
@@ -422,8 +422,8 @@ class InteractiveMode:
         
         template = self.get_choice(
             "Select template",
-            ["worker", "supervisor", "miner", "hybrid"],
-            "worker"
+            ["client", "miner", "supervisor", "evaluator", "verifier", "peer"],
+            "miner"
         )
         
         port = self.get_input("Port", "8333")
@@ -3033,9 +3033,9 @@ def create_parser() -> argparse.ArgumentParser:
                              help="Node identifier")
     start_parser.add_argument("--config", help="Configuration file path")
     start_parser.add_argument("--node-type", 
-                             choices=["worker", "supervisor", 
-                                     "miner", "hybrid"],
-                             default="worker", help="Node type")
+                             choices=["client", "miner", "supervisor", 
+                                     "evaluator", "verifier", "peer"],
+                             default="miner", help="Node type")
     start_parser.add_argument("--port", type=int, default=8333, 
                              help="Listen port")
     start_parser.add_argument("--mining", action="store_true", 
@@ -3101,8 +3101,8 @@ def create_parser() -> argparse.ArgumentParser:
                                      help="Node identifier")
     create_config_parser.add_argument(
         "--template", 
-        choices=["worker", "supervisor", "miner", "hybrid"],
-        default="worker", 
+        choices=["client", "miner", "supervisor", "evaluator", "verifier", "peer"],
+        default="miner", 
         help="Configuration template")
     create_config_parser.add_argument("--port", type=int, default=8333, 
                                      help="Listen port")

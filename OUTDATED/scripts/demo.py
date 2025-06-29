@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 
 from pouw.node import PoUWNode
-from pouw.economics import NodeRole
+from pouw.economics.staking import NodeRole
 from pouw.blockchain import MLTask
 
 

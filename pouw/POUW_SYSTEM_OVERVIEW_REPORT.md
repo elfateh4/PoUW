@@ -212,38 +212,58 @@ The PoUW system integrates multiple sophisticated components:
 
 ## Node Types and Roles
 
-### Node Types
+### Node Types (As Defined in the PoUW Paper)
 
-1. **Worker Nodes**
-   - Perform ML training tasks
-   - Participate in federated learning
-   - Contribute computational resources
-   - Earn rewards for quality work
+The PoUW system implements six distinct node types as specified in the arXiv paper:
 
-2. **Supervisor Nodes**
-   - Coordinate training sessions
-   - Validate worker contributions
-   - Manage task distribution
-   - Maintain network stability
+1. **Client Nodes**
+   - Submit ML tasks and pay training fees
+   - Define task specifications and requirements
+   - Receive trained models upon completion
+   - Do not participate in mining or training
 
-3. **Miner Nodes**
-   - Mine blocks using ML computation
-   - Validate transactions
-   - Secure the network
-   - Earn mining rewards
+2. **Miner Nodes**
+   - Perform ML training tasks and mine blocks with useful work
+   - Participate in federated learning protocols
+   - Contribute computational resources for training
+   - Earn rewards for both training quality and block mining
+   - Generate nonces from ML computation by-products
 
-4. **Hybrid Nodes**
-   - Can perform multiple roles
-   - Adapt to network needs
-   - Optimize resource utilization
-   - Provide flexibility
+3. **Supervisor Nodes**
+   - Record message history during training sessions
+   - Guard against malicious behavior and Byzantine attacks
+   - Coordinate task distribution and validation
+   - Maintain network stability and consensus
+   - Use BLS threshold signatures for consensus
+
+4. **Evaluator Nodes**
+   - Test final models from each miner
+   - Select the best performing model for clients
+   - Distribute client fees among honest participants
+   - Ensure fair reward distribution
+   - Provide model quality assessment
+
+5. **Verifier Nodes**
+   - Verify if mined blocks are valid
+   - Re-run ML iterations to validate useful work
+   - Check nonce generation from ML computation
+   - Ensure mining proof authenticity
+   - Provide block validation consensus
+
+6. **Peer Nodes**
+   - Support network infrastructure and data relay
+   - Use regular blockchain transactions
+   - Do not have special roles in ML training
+   - Provide network connectivity and stability
+   - Can participate in basic blockchain operations
 
 ### Economic Roles
 
-- **Stakeholders**: Stake tokens for network participation
-- **Task Submitters**: Submit ML tasks with fees
-- **Validators**: Verify work quality and authenticity
-- **Delegates**: Delegate stake to other nodes
+- **Stakeholders**: Stake tokens for network participation (all node types except peers)
+- **Task Submitters**: Submit ML tasks with fees (clients)
+- **Workers**: Perform computational work (miners, supervisors, evaluators, verifiers)
+- **Validators**: Verify work quality and authenticity (verifiers, evaluators)
+- **Coordinators**: Manage and coordinate tasks (supervisors)
 
 ## Blockchain Implementation
 
@@ -463,34 +483,44 @@ The PoUW CLI (`pouw-cli`) provides comprehensive node management:
 #### Core Commands
 ```bash
 # Node Management
-./pouw-cli start --node-id worker-1 --node-type worker
-./pouw-cli stop --node-id worker-1
-./pouw-cli status --node-id worker-1
-./pouw-cli restart --node-id worker-1
+./pouw-cli start --node-id miner-1 --node-type miner
+./pouw-cli start --node-id supervisor-1 --node-type supervisor
+./pouw-cli start --node-id evaluator-1 --node-type evaluator
+./pouw-cli start --node-id verifier-1 --node-type verifier
+./pouw-cli start --node-id client-1 --node-type client
+./pouw-cli start --node-id peer-1 --node-type peer
+./pouw-cli stop --node-id miner-1
+./pouw-cli status --node-id miner-1
+./pouw-cli restart --node-id miner-1
 
 # Configuration
-./pouw-cli config create --template worker
-./pouw-cli config show --node-id worker-1
-./pouw-cli config edit --node-id worker-1
+./pouw-cli config create --template miner
+./pouw-cli config create --template supervisor
+./pouw-cli config create --template evaluator
+./pouw-cli config create --template verifier
+./pouw-cli config create --template client
+./pouw-cli config create --template peer
+./pouw-cli config show --node-id miner-1
+./pouw-cli config edit --node-id miner-1
 
 # Monitoring
-./pouw-cli logs --node-id worker-1 --tail 100 --follow
+./pouw-cli logs --node-id miner-1 --tail 100 --follow
 ./pouw-cli list-nodes
 ./pouw-cli system-status
 
 # ML Task Management
-./pouw-cli submit-task --node-id worker-1 --fee 50.0
-./pouw-cli list-tasks --node-id worker-1
+./pouw-cli submit-task --node-id client-1 --fee 50.0
+./pouw-cli list-tasks --node-id miner-1
 ./pouw-cli task-status --task-id task123
 
 # Wallet Operations
-./pouw-cli balance --node-id worker-1
-./pouw-cli send --node-id worker-1 --to address --amount 10.0
-./pouw-cli address --node-id worker-1
+./pouw-cli balance --node-id miner-1
+./pouw-cli send --node-id miner-1 --to address --amount 10.0
+./pouw-cli address --node-id miner-1
 
 # Network Operations
-./pouw-cli add-peer --node-id worker-1 --peer 192.168.1.100:8333
-./pouw-cli list-peers --node-id worker-1
+./pouw-cli add-peer --node-id miner-1 --peer 192.168.1.100:8333
+./pouw-cli list-peers --node-id miner-1
 ./pouw-cli connect --address 192.168.1.100 --port 8333
 ```
 
@@ -579,45 +609,90 @@ The PoUW CLI (`pouw-cli`) provides comprehensive node management:
 ### Primary Use Cases
 
 1. **Distributed AI Training**
-   - Large-scale machine learning model training
-   - Cross-organizational data collaboration
-   - Privacy-preserving federated learning
+   - **Clients** submit ML tasks with specifications and fees
+   - **Miners** perform distributed training and mine blocks with useful work
+   - **Supervisors** coordinate training and record message history
+   - **Evaluators** test final models and select the best for clients
+   - **Verifiers** validate mining proofs and block authenticity
+   - **Peers** provide network infrastructure support
 
 2. **Blockchain with Utility**
-   - Cryptocurrency with productive mining
-   - Incentivized scientific computation
-   - Decentralized AI marketplace
+   - Cryptocurrency mining based on productive ML computation
+   - Incentivized scientific computation and research
+   - Decentralized AI marketplace with fair reward distribution
+   - Proof of useful work consensus mechanism
 
 3. **Research Collaboration**
-   - Academic research networks
-   - Shared computational resources
-   - Reproducible research environments
+   - Academic research networks with distributed computation
+   - Shared computational resources across institutions
+   - Reproducible research environments with blockchain verification
+   - Collaborative model development without data sharing
 
 ### Industry Applications
 
-- **Healthcare**: Federated medical AI without data sharing
-- **Finance**: Fraud detection with privacy preservation
-- **Autonomous Vehicles**: Collaborative model training
-- **Smart Cities**: Distributed sensing and analytics
-- **Supply Chain**: Transparent and verifiable AI decisions
+- **Healthcare**: Federated medical AI training where clients (hospitals) submit tasks, miners train on local data, and evaluators ensure model quality
+- **Finance**: Fraud detection models where clients (banks) submit tasks, miners train collaboratively, and verifiers ensure model integrity
+- **Autonomous Vehicles**: Collaborative model training where clients (car manufacturers) submit tasks, miners train on diverse driving data
+- **Smart Cities**: Distributed sensing and analytics where clients (city governments) submit tasks, miners process local sensor data
+- **Supply Chain**: Transparent and verifiable AI decisions where clients (companies) submit tasks, miners train on supply chain data
 
 ## System Requirements
 
-### Minimum Requirements
+### Node Type-Specific Requirements
 
-- **CPU**: Multi-core processor (4+ cores recommended)
-- **RAM**: 4GB (8GB+ recommended for mining)
-- **Storage**: 10GB available space
+#### Client Nodes
+- **CPU**: Basic multi-core processor (2+ cores)
+- **RAM**: 2GB minimum
+- **Storage**: 5GB available space
 - **Network**: Reliable internet connection
 - **OS**: Linux, macOS, or Windows with Python 3.9+
 
-### Recommended Requirements
+#### Miner Nodes
+- **CPU**: Multi-core processor (4+ cores recommended)
+- **RAM**: 8GB+ (16GB+ recommended for large models)
+- **Storage**: 20GB+ available space
+- **GPU**: CUDA-compatible GPU highly recommended
+- **Network**: High-bandwidth, low-latency connection
+- **OS**: Linux, macOS, or Windows with Python 3.9+
+
+#### Supervisor Nodes
+- **CPU**: Multi-core processor (4+ cores)
+- **RAM**: 8GB+ for message history storage
+- **Storage**: 50GB+ for data redundancy and logs
+- **Network**: High-bandwidth, reliable connection
+- **OS**: Linux, macOS, or Windows with Python 3.9+
+
+#### Evaluator Nodes
+- **CPU**: Multi-core processor (4+ cores)
+- **RAM**: 8GB+ for model evaluation
+- **Storage**: 20GB+ for evaluation datasets
+- **GPU**: Optional but recommended for large models
+- **Network**: Reliable internet connection
+- **OS**: Linux, macOS, or Windows with Python 3.9+
+
+#### Verifier Nodes
+- **CPU**: Multi-core processor (4+ cores)
+- **RAM**: 8GB+ for verification computations
+- **Storage**: 15GB+ for verification data
+- **GPU**: Optional but recommended
+- **Network**: Reliable internet connection
+- **OS**: Linux, macOS, or Windows with Python 3.9+
+
+#### Peer Nodes
+- **CPU**: Basic processor (2+ cores)
+- **RAM**: 2GB minimum
+- **Storage**: 5GB available space
+- **Network**: Reliable internet connection
+- **OS**: Linux, macOS, or Windows with Python 3.9+
+
+### Recommended Requirements (For Production Deployment)
 
 - **CPU**: 8+ core processor with high clock speed
 - **RAM**: 16GB+ for optimal performance
-- **GPU**: CUDA-compatible GPU for acceleration
-- **Storage**: SSD with 50GB+ available space
+- **GPU**: CUDA-compatible GPU for ML acceleration
+- **Storage**: SSD with 100GB+ available space
 - **Network**: High-bandwidth, low-latency connection
+- **Redundancy**: Multiple network interfaces for reliability
 
 ### Dependencies
 
@@ -653,14 +728,24 @@ Key Python packages:
 
 ## Conclusion
 
-PoUW represents a paradigm shift in blockchain technology, combining the security and decentralization of blockchain with the practical utility of distributed machine learning. The system provides a comprehensive platform for:
+PoUW represents a paradigm shift in blockchain technology, combining the security and decentralization of blockchain with the practical utility of distributed machine learning. The system implements a comprehensive six-node architecture as specified in the arXiv paper, providing a complete platform for:
 
-- **Productive Mining**: Converting wasteful computation into useful AI work
-- **Decentralized AI**: Enabling collaborative AI development without centralized control
-- **Economic Incentives**: Aligning economic rewards with valuable contributions
-- **Enterprise Readiness**: Production-grade features for real-world deployment
+- **Productive Mining**: Converting wasteful computation into useful AI work through miner nodes
+- **Decentralized AI**: Enabling collaborative AI development through coordinated client, miner, supervisor, evaluator, and verifier interactions
+- **Economic Incentives**: Aligning economic rewards with valuable contributions across all participant types
+- **Enterprise Readiness**: Production-grade features for real-world deployment with proper node type separation
 
-The modular architecture, comprehensive security framework, and focus on production deployment make PoUW suitable for both research environments and commercial applications. With its innovative consensus mechanism and integrated ML capabilities, PoUW opens new possibilities for blockchain applications in artificial intelligence and distributed computing.
+The modular architecture with distinct node types (Client, Miner, Supervisor, Evaluator, Verifier, Peer), comprehensive security framework, and focus on production deployment make PoUW suitable for both research environments and commercial applications. With its innovative consensus mechanism based on useful ML work and integrated distributed training capabilities, PoUW opens new possibilities for blockchain applications in artificial intelligence and distributed computing.
+
+The system's node type architecture ensures proper separation of concerns:
+- **Clients** focus on task submission and model reception
+- **Miners** perform the core ML work and mining operations
+- **Supervisors** ensure coordination and security
+- **Evaluators** guarantee quality and fair reward distribution
+- **Verifiers** maintain blockchain integrity
+- **Peers** provide network infrastructure support
+
+This architecture enables scalable, secure, and efficient distributed AI training while maintaining blockchain security and decentralization principles.
 
 ---
 

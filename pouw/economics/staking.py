@@ -15,11 +15,12 @@ from enum import Enum
 class NodeRole(Enum):
     """Network participant roles"""
 
-    MINER = "miner"
-    SUPERVISOR = "supervisor"
-    EVALUATOR = "evaluator"
-    VERIFIER = "verifier"
-    PEER = "peer"
+    CLIENT = "client"      # Nodes that pay to train their models
+    MINER = "miner"        # Nodes that perform training and can mine blocks  
+    SUPERVISOR = "supervisor"  # Actors that record messages and guard against malicious behavior
+    EVALUATOR = "evaluator"    # Independent nodes that test final models and distribute fees
+    VERIFIER = "verifier"      # Nodes that verify if blocks are valid
+    PEER = "peer"          # Nodes that don't have special roles, use regular transactions
 
 
 @dataclass

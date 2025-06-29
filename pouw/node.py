@@ -54,6 +54,7 @@ from pouw import (
     EconomicSystem,
     StakingManager,
     TaskMatcher,
+    NodeRole,  # Import NodeRole from economics module
     # Production
     PerformanceMonitor,
     GPUManager,
@@ -76,15 +77,6 @@ from pouw import (
 )
 
 
-class NodeType(Enum):
-    """Types of PoUW nodes"""
-
-    WORKER = "worker"
-    SUPERVISOR = "supervisor"
-    MINER = "miner"
-    HYBRID = "hybrid"  # Can perform multiple roles
-
-
 class NodeState(Enum):
     """Node operational states"""
 
@@ -105,7 +97,7 @@ class NodeConfiguration:
 
     # Identity
     node_id: str
-    node_type: NodeType
+    node_type: NodeRole  # Changed from NodeType to NodeRole
     private_key_path: str
 
     # Network
@@ -432,7 +424,7 @@ class PoUWNode:
         self.logger.info("Initializing cryptographic components")
 
         # Initialize BLS threshold cryptography for supervisors
-        if self.config.node_type in [NodeType.SUPERVISOR, NodeType.HYBRID]:
+        if self.config.node_type == NodeRole.SUPERVISOR:
             self.bls_crypto = BLSThresholdCrypto(
                 threshold=3, total_parties=5
             )
@@ -923,7 +915,7 @@ def load_config_from_file(config_path: str) -> NodeConfiguration:
 
 
 def create_default_config(node_id: str,
-                          node_type: NodeType) -> NodeConfiguration:
+                          node_type: NodeRole) -> NodeConfiguration:
     """Create default configuration for a node"""
     return NodeConfiguration(
         node_id=node_id,
@@ -940,9 +932,9 @@ async def main():
     parser = argparse.ArgumentParser(description="PoUW Blockchain Node")
     parser.add_argument("--config", help="Configuration file path")
     parser.add_argument("--node-id", help="Node identifier")
-    parser.add_argument("--node-type", choices=["worker", "supervisor",
-                                                "miner", "hybrid"],
-                        default="worker", help="Node type")
+    parser.add_argument("--node-type", choices=["client", "miner", "supervisor", 
+                                                "evaluator", "verifier", "peer"],
+                        default="miner", help="Node type")
     parser.add_argument("--port", type=int, default=8333, help="Listen port")
     parser.add_argument("--mining", action="store_true", help="Enable mining")
     parser.add_argument("--training", action="store_true",
@@ -959,7 +951,7 @@ async def main():
         config = load_config_from_file(args.config)
     else:
         node_id = args.node_id or f"node_{int(time.time())}"
-        node_type = NodeType(args.node_type)
+        node_type = NodeRole(args.node_type)
         config = create_default_config(node_id, node_type)
 
     # Override config with command line arguments

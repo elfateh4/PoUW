@@ -4,35 +4,41 @@
 
 ### Node Types Available
 
-Your PoUW network supports multiple node types, each with different requirements and capabilities:
+Your PoUW network supports multiple node types as defined in the PoUW paper:
 
-#### 1. **Miner Nodes (Workers)**
+#### 1. **Client Nodes**
 
-- **Purpose**: Perform ML training tasks and earn rewards
+- **Purpose**: Submit ML tasks and pay for training services
+- **Requirements**: PAI tokens for task fees, task definition
+- **Ideal for**: ML researchers, companies, individuals needing model training
+
+#### 2. **Miner Nodes (Workers)**
+
+- **Purpose**: Perform ML training tasks and mine blocks with useful work
 - **Requirements**: GPU/CPU for ML computations, stake tokens
 - **Ideal for**: Gaming PCs, workstations, dedicated mining rigs
 
-#### 2. **Supervisor Nodes**
+#### 3. **Supervisor Nodes**
 
-- **Purpose**: Coordinate tasks, validate work, manage network
+- **Purpose**: Record message history, coordinate tasks, validate work, manage network
 - **Requirements**: Reliable internet, moderate compute, higher stake
 - **Ideal for**: Servers, always-on devices, enterprise nodes
 
-#### 3. **Verifier Nodes**
-
-- **Purpose**: Validate ML model outputs and training results
-- **Requirements**: Moderate compute, network bandwidth
-- **Ideal for**: Edge devices, validation services
-
 #### 4. **Evaluator Nodes**
 
-- **Purpose**: Assess model quality and performance metrics
-- **Requirements**: ML expertise, evaluation datasets
+- **Purpose**: Test final models, select best model, distribute client fees
+- **Requirements**: ML expertise, evaluation datasets, stake tokens
 - **Ideal for**: Academic institutions, ML researchers
 
-#### 5. **Peer Nodes**
+#### 5. **Verifier Nodes**
 
-- **Purpose**: Support network infrastructure, data relay
+- **Purpose**: Validate ML model outputs and training results, verify blocks
+- **Requirements**: Moderate compute, network bandwidth, stake tokens
+- **Ideal for**: Edge devices, validation services
+
+#### 6. **Peer Nodes**
+
+- **Purpose**: Support network infrastructure, data relay, regular transactions
 - **Requirements**: Network bandwidth, storage
 - **Ideal for**: Home routers, IoT devices, mobile phones
 
@@ -50,7 +56,7 @@ pip install -r requirements.txt
 
 # Start as a miner node connecting to your VPS
 python main.py \
-  --role MINER \
+  --role miner \
   --node-id "home_miner_001" \
   --port 8000 \
   --stake 100.0 \
@@ -64,7 +70,7 @@ python main.py \
 docker run -d \
   --name pouw-miner \
   -p 8000:8000 \
-  -e NODE_ROLE=MINER \
+  -e NODE_ROLE=miner \
   -e NODE_ID=docker_miner_001 \
   -e STAKE=100.0 \
   -e BOOTSTRAP_PEERS="YOUR_VPS_IP:8000" \

@@ -20,7 +20,7 @@ from typing import Dict, List
 import numpy as np
 
 from pouw.node import PoUWNode
-from pouw.economics import NodeRole
+from pouw.economics.staking import NodeRole
 from pouw.ml.training import GradientUpdate
 from pouw.blockchain.core import MLTask
 from pouw.security import AttackType, SecurityAlert

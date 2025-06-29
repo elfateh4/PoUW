@@ -8,7 +8,7 @@ import argparse
 import signal
 import sys
 from pouw.node import PoUWNode
-from pouw.economics import NodeRole
+from pouw.economics.staking import NodeRole
 
 
 async def main():

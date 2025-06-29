@@ -17,7 +17,7 @@ import random
 from typing import List
 
 from pouw.node import PoUWNode
-from pouw.economics import NodeRole
+from pouw.economics.staking import NodeRole
 from pouw.network.operations import NodeStatus, NodeHealthMetrics
 
 
