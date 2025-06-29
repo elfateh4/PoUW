@@ -1963,20 +1963,33 @@ class PoUWCLI:
     
     def create_default_config(self, node_id: str, node_type: str, **kwargs) -> Dict[str, Any]:
         """Create default configuration for a node"""
+        # Validate node_type against NodeRole enum
+        from pouw.economics.staking import NodeRole
+        try:
+            # Convert string to NodeRole enum
+            if isinstance(node_type, str):
+                node_role = NodeRole(node_type)
+            else:
+                node_role = node_type
+        except ValueError:
+            raise ValueError(f"Invalid node type: {node_type}. Valid types: {[role.value for role in NodeRole]}")
+        
+        # Base configuration
         config = {
             "node_id": node_id,
-            "node_type": node_type,
+            "node_type": node_role.value,  # Use the enum value
+            "private_key_path": f"./keys/{node_id}.pem",
             "network": {
                 "port": kwargs.get("port", 8333),
                 "bootstrap_peers": kwargs.get("bootstrap_peers", []),
             },
             "mining": {
-                "enabled": kwargs.get("mining", False),
+                "enabled": kwargs.get("mining", node_role == NodeRole.MINER),
                 "gpu_enabled": kwargs.get("gpu", False),
                 "threads": kwargs.get("threads", 1),
             },
             "training": {
-                "enabled": kwargs.get("training", False),
+                "enabled": kwargs.get("training", node_role in [NodeRole.MINER, NodeRole.SUPERVISOR]),
                 "batch_size": 32,
                 "learning_rate": 0.001,
             },
@@ -1985,6 +1998,44 @@ class PoUWCLI:
                 "file": str(self.get_node_log_file(node_id)),
             },
         }
+        
+        # Node type specific configurations
+        if node_role == NodeRole.CLIENT:
+            config["mining"]["enabled"] = False
+            config["training"]["enabled"] = False
+            config["staking_enabled"] = True
+            config["initial_stake"] = kwargs.get("stake", 50.0)
+            
+        elif node_role == NodeRole.MINER:
+            config["mining"]["enabled"] = True
+            config["training"]["enabled"] = True
+            config["staking_enabled"] = True
+            config["initial_stake"] = kwargs.get("stake", 100.0)
+            
+        elif node_role == NodeRole.SUPERVISOR:
+            config["mining"]["enabled"] = False
+            config["training"]["enabled"] = True
+            config["staking_enabled"] = True
+            config["initial_stake"] = kwargs.get("stake", 200.0)
+            
+        elif node_role == NodeRole.EVALUATOR:
+            config["mining"]["enabled"] = False
+            config["training"]["enabled"] = False
+            config["staking_enabled"] = True
+            config["initial_stake"] = kwargs.get("stake", 150.0)
+            
+        elif node_role == NodeRole.VERIFIER:
+            config["mining"]["enabled"] = False
+            config["training"]["enabled"] = False
+            config["staking_enabled"] = True
+            config["initial_stake"] = kwargs.get("stake", 100.0)
+            
+        elif node_role == NodeRole.PEER:
+            config["mining"]["enabled"] = False
+            config["training"]["enabled"] = False
+            config["staking_enabled"] = False
+            config["initial_stake"] = 0.0
+            
         return config
     
     def save_config(self, node_id: str, config: Dict[str, Any]):
