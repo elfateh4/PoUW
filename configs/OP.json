@@ -1,0 +1,25 @@
+{
+  "node_id": "OP",
+  "node_type": "supervisor",
+  "private_key_path": "./keys/OP.pem",
+  "network": {
+    "port": 8333,
+    "bootstrap_peers": []
+  },
+  "mining": {
+    "enabled": false,
+    "gpu_enabled": true,
+    "threads": 1
+  },
+  "training": {
+    "enabled": true,
+    "batch_size": 32,
+    "learning_rate": 0.001
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/OP.log"
+  },
+  "staking_enabled": true,
+  "initial_stake": 200.0
+}

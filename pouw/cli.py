@@ -204,20 +204,37 @@ class InteractiveMode:
         print("\n🛑 Stop Node")
         print("-" * 20)
         
-        nodes = [n for n in self.cli.list_nodes() if n['status'] == 'running']
-        if not nodes:
-            print("📭 No running nodes to stop")
+        # Get all configured nodes, not just running ones
+        all_nodes = self.cli.list_nodes()
+        if not all_nodes:
+            print("📭 No nodes configured")
+            print("💡 Use 'Start Node' to create and start a node first")
             return
         
-        print("Running nodes:")
-        for i, node in enumerate(nodes, 1):
-            print(f"  {i}. {node['node_id']} "
+        # Show all nodes with their status
+        print("Configured nodes:")
+        for i, node in enumerate(all_nodes, 1):
+            status_emoji = "🟢" if node['status'] == 'running' else "🔴"
+            print(f"  {i}. {node['node_id']} {status_emoji} "
                   f"(Type: {node['node_type']}, Port: {node['port']})")
         
+        # Check if any nodes are running
+        running_nodes = [n for n in all_nodes if n['status'] == 'running']
+        if not running_nodes:
+            print("\n📭 No nodes are currently running")
+            print("💡 Use 'Start Node' to start a node first")
+            return
+        
         try:
-            choice = int(input(f"Select node to stop (1-{len(nodes)}): "))
-            if 1 <= choice <= len(nodes):
-                node_id = nodes[choice - 1]['node_id']
+            choice = int(input(f"\nSelect node to stop (1-{len(all_nodes)}): "))
+            if 1 <= choice <= len(all_nodes):
+                selected_node = all_nodes[choice - 1]
+                node_id = selected_node['node_id']
+                
+                if selected_node['status'] != 'running':
+                    print(f"⚠️  Node {node_id} is not running (status: {selected_node['status']})")
+                    return
+                
                 force = self.confirm("Force kill (not recommended)?")
                 
                 print(f"\n🛑 Stopping node {node_id}...")
@@ -230,28 +247,39 @@ class InteractiveMode:
                 print("❌ Invalid choice")
         except ValueError:
             print("❌ Please enter a valid number")
+        
+        # Add pause to let user see the result
+        self.pause()
     
     def restart_node_interactive(self):
         """Interactive node restart"""
         print("\n🔄 Restart Node")
         print("-" * 20)
         
-        nodes = self.cli.list_nodes()
-        if not nodes:
+        # Get all configured nodes
+        all_nodes = self.cli.list_nodes()
+        if not all_nodes:
             print("📭 No nodes configured")
+            print("💡 Use 'Start Node' to create and start a node first")
             return
         
-        print("Available nodes:")
-        for i, node in enumerate(nodes, 1):
+        # Show all nodes with their status
+        print("Configured nodes:")
+        for i, node in enumerate(all_nodes, 1):
             status_emoji = "🟢" if node['status'] == 'running' else "🔴"
-            print(f"  {i}. {node['node_id']} {status_emoji}")
+            print(f"  {i}. {node['node_id']} {status_emoji} "
+                  f"(Type: {node['node_type']}, Port: {node['port']})")
         
         try:
-            choice = int(input(f"Select node to restart (1-{len(nodes)}): "))
-            if 1 <= choice <= len(nodes):
-                node_id = nodes[choice - 1]['node_id']
+            choice = int(input(f"\nSelect node to restart (1-{len(all_nodes)}): "))
+            if 1 <= choice <= len(all_nodes):
+                selected_node = all_nodes[choice - 1]
+                node_id = selected_node['node_id']
                 
-                print(f"\n🔄 Restarting node {node_id}...")
+                if selected_node['status'] == 'running':
+                    print(f"🔄 Restarting running node {node_id}...")
+                else:
+                    print(f"🚀 Starting stopped node {node_id}...")
                 
                 # Handle async restart properly
                 try:
@@ -259,8 +287,7 @@ class InteractiveMode:
                     # Create task to restart the node
                     loop.create_task(self.cli.restart_node_async(node_id))
                     print(f"✅ Node {node_id} restart initiated!")
-                    print("💡 Use 'Node Status' to check if restart "
-                          "completed.")
+                    print("💡 Use 'Node Status' to check if restart completed.")
                 except RuntimeError:
                     # Fallback for environments without running loop
                     success = self.cli.restart_node(node_id)
@@ -272,6 +299,9 @@ class InteractiveMode:
                 print("❌ Invalid choice")
         except ValueError:
             print("❌ Please enter a valid number")
+        
+        # Add pause to let user see the result
+        self.pause()
     
     def view_status_interactive(self):
         """Interactive status viewing"""
@@ -2550,6 +2580,8 @@ class PoUWCLI:
             print("❌ ECDSA library not available. Install with: pip install ecdsa")
         except Exception as e:
             print(f"❌ Error creating transaction: {e}")
+            import traceback
+            traceback.print_exc()
 
     def cmd_address(self, args):
         """Show wallet address for a node"""
