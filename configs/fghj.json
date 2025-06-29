@@ -1,0 +1,25 @@
+{
+  "node_id": "fghj",
+  "node_type": "miner",
+  "private_key_path": "./keys/fghj.pem",
+  "network": {
+    "port": 8333,
+    "bootstrap_peers": []
+  },
+  "mining": {
+    "enabled": true,
+    "gpu_enabled": false,
+    "threads": 1
+  },
+  "training": {
+    "enabled": true,
+    "batch_size": 32,
+    "learning_rate": 0.001
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/fghj.log"
+  },
+  "staking_enabled": true,
+  "initial_stake": 100.0
+}

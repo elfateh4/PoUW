@@ -1,0 +1,25 @@
+{
+  "node_id": "a",
+  "node_type": "client",
+  "private_key_path": "./keys/a.pem",
+  "network": {
+    "port": 8333,
+    "bootstrap_peers": []
+  },
+  "mining": {
+    "enabled": false,
+    "gpu_enabled": true,
+    "threads": 1
+  },
+  "training": {
+    "enabled": false,
+    "batch_size": 32,
+    "learning_rate": 0.001
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/a.log"
+  },
+  "staking_enabled": true,
+  "initial_stake": 50.0
+}

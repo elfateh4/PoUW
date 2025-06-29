@@ -379,18 +379,40 @@ class InteractiveMode:
         nodes = self.cli.list_nodes()
         if not nodes:
             print("📭 No nodes configured")
+            print("💡 Use 'Start Node' to create and start a node first")
             return
         
         print("Available nodes:")
         for i, node in enumerate(nodes, 1):
             log_file = self.cli.get_node_log_file(node['node_id'])
-            log_exists = "📝" if log_file.exists() else "📭"
+            if log_file.exists():
+                file_size = log_file.stat().st_size
+                if file_size > 0:
+                    log_exists = "📝"
+                else:
+                    log_exists = "📄"
+            else:
+                log_exists = "📭"
             print(f"  {i}. {node['node_id']} {log_exists}")
         
         try:
             choice = int(input(f"Select node (1-{len(nodes)}): "))
             if 1 <= choice <= len(nodes):
                 node_id = nodes[choice - 1]['node_id']
+                log_file = self.cli.get_node_log_file(node_id)
+                
+                if not log_file.exists():
+                    print(f"\n📭 No log file found for {node_id}")
+                    print(f"💡 Log file would be created at: {log_file}")
+                    print("💡 Start the node to generate logs")
+                    return
+                
+                file_size = log_file.stat().st_size
+                if file_size == 0:
+                    print(f"\n📄 Log file for {node_id} exists but is empty")
+                    print(f"📁 File: {log_file}")
+                    print("💡 Start the node to generate log content")
+                    return
                 
                 lines = self.get_input("Number of lines to show", "50")
                 try:
@@ -401,12 +423,17 @@ class InteractiveMode:
                 follow = self.confirm("Follow logs in real-time?")
                 
                 print(f"\n📝 Logs for {node_id}:")
+                print(f"📁 File: {log_file}")
+                print(f"📏 Size: {file_size} bytes")
                 print("-" * 40)
                 self.cli.show_logs(node_id, lines=lines, follow=follow)
             else:
                 print("❌ Invalid choice")
         except ValueError:
             print("❌ Please enter a valid number")
+        
+        # Add pause to let user see the result
+        self.pause()
     
     def config_management_interactive(self):
         """Interactive configuration management"""
@@ -2259,16 +2286,40 @@ class PoUWCLI:
             print(f"No logs found for node {node_id}")
             return
         
+        file_size = log_file.stat().st_size
+        if file_size == 0:
+            print(f"Log file for {node_id} is empty")
+            print(f"File: {log_file}")
+            return
+        
         if follow:
             # Use tail -f equivalent
-            subprocess.run(["tail", "-f", str(log_file)])
+            print(f"Following logs for {node_id} (Ctrl+C to stop)...")
+            try:
+                subprocess.run(["tail", "-f", str(log_file)])
+            except KeyboardInterrupt:
+                print("\n📝 Log following stopped")
+            except FileNotFoundError:
+                print("❌ 'tail' command not found. Install coreutils.")
         else:
             # Show last N lines
             try:
                 with open(log_file) as f:
                     log_lines = f.readlines()
-                    for line in log_lines[-lines:]:
+                    if not log_lines:
+                        print(f"Log file for {node_id} is empty")
+                        return
+                    
+                    # Show the last N lines
+                    lines_to_show = min(lines, len(log_lines))
+                    print(f"Showing last {lines_to_show} lines of {len(log_lines)} total:")
+                    print("-" * 40)
+                    for line in log_lines[-lines_to_show:]:
                         print(line.rstrip())
+                    
+                    if len(log_lines) > lines:
+                        print(f"\n... ({len(log_lines) - lines} more lines above)")
+                        
             except Exception as e:
                 print(f"Error reading logs: {e}")
     
