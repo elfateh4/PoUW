@@ -194,3 +194,12 @@ arXiv-*/
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+
+# Sensitive files and keys
+blockchain.db
+account_backup/
+nginx/ssl/
+keys/
+*.pem
+*.key
+.env.production
