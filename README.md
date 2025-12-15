@@ -273,7 +273,7 @@ export POUW_ENABLE_MONITORING="true"
 export POUW_LOG_LEVEL="INFO"
 ```
 
-## 🔧 Development Setup
+## Development Setup
 
 ### Development Environment
 
