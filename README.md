@@ -96,7 +96,7 @@ chmod +x pouw-cli
 ./pouw-cli --help
 ```
 
-## 🎮 Interactive CLI Usage
+## Interactive CLI Usage
 
 The easiest way to get started is using the interactive CLI:
 
