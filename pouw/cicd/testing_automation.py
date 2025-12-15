@@ -211,7 +211,7 @@ class TestAutomationManager:
                 name="pouw_test_db",
                 environment={
                     "POSTGRES_DB": "pouw_test",
-                    "POSTGRES_USER": "test",
+                    "POSTGRES_USER": "REDACTED",
                     "POSTGRES_PASSWORD": "REDACTED",
                 },
                 ports={"5432/tcp": 5433},
